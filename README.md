@@ -1,4 +1,4 @@
-# sumtype
+# ts-sumtype
 
 > A convention for representing sum types in TypeScript, and the primitives that remove its boilerplate.
 
@@ -8,13 +8,13 @@
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
 
 ```sh
-npm install sumtype      # or: pnpm add sumtype · yarn add sumtype · bun add sumtype
+npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
 [Variant](#variant) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [matchTag](#matchtag) · [Result](#result) · [Option](#option) · [Shared helpers](#shared-helpers) · [chain](#chain) · [Async](#async) · [Adapting existing data](#adapting-existing-data) · [Semantics & gotchas](#semantics--gotchas) · [Entry points](#entry-points)
 
 ```typescript
-import { variant, matchTag, type Variant } from "sumtype";
+import { variant, matchTag, type Variant } from "ts-sumtype";
 
 type PaymentMethod =
   | Variant<"cash">
@@ -98,7 +98,7 @@ That symmetry is what reading the union looks like afterward: `method.cash`, `me
 `Variant<K, T>` is this shape, generalized, a `tag` and a payload stored under a key named after that tag, and `variant(tag, payload)` builds one:
 
 ```typescript
-import { variant, type Variant } from "sumtype";
+import { variant, type Variant } from "ts-sumtype";
 
 type PaymentMethod =
   | Variant<"cash">
@@ -193,7 +193,7 @@ JSON.stringify(variant("cash"));
 A tag check reads one case; some code needs to ask about several at once, which methods refund instantly versus which need manual review, say. `isVariant(v, ...tags)` is a type guard: it's true when `v`'s tag is one of the tags you pass, and it narrows `v` accordingly. Pass one tag to test one case, or several to match **any** of them:
 
 ```typescript
-import { isVariant } from "sumtype";
+import { isVariant } from "ts-sumtype";
 
 // one tag, narrows to that case
 const isCreditCard = (m: PaymentMethod) => isVariant(m, "creditCard");
@@ -226,7 +226,7 @@ function isMutedNow(m: Muted): boolean {
 A tag check reads one case. `matchTag` handles them all at once, one branch per tag. Each branch is either a **function arm** that receives the payload, or a **value arm** returned as-is:
 
 ```typescript
-import { matchTag } from "sumtype";
+import { matchTag } from "ts-sumtype";
 
 const describe = (method: PaymentMethod) =>
   matchTag(method, {
@@ -294,7 +294,7 @@ type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
 This is the same union-with-a-discriminant shape as the payment method's first draft, just with the discriminant narrowed to two values instead of a string. It has the same asymmetry problem: `value` and `error` don't share a name with anything on `ok`, so there's no tag-to-key correspondence to read by, and no way to fold it into a `switch` over a shared `tag` the way every other sum type in a codebase would be. `Result<T, E>` here is `Present<T> | Err<E>` instead, the same two cases, built from the same `Variant` convention as everything else:
 
 ```typescript
-import { present, err, type Result } from "sumtype";
+import { present, err, type Result } from "ts-sumtype";
 
 type ValidationErr =
   | Variant<"expired", { expiredOn: string }>
@@ -332,7 +332,7 @@ err("expired", { expiredOn: "2027-01-01" });
 `err` is `tagged("error")`, a constructor pre-nested under one outer tag. Build your own the same way for deeper taxonomies, like the failures a payment gateway call can return:
 
 ```typescript
-import { tagged } from "sumtype";
+import { tagged } from "ts-sumtype";
 
 const gatewayErr = tagged("error", "gateway");
 gatewayErr("declined", { reason: "insufficient_funds" });
@@ -364,7 +364,7 @@ When the error has no tag of its own, a caught `unknown`, or a bare sentinel, co
 `Option<T>` is `Present<T> | None`, a value that may be absent. Its present case **is** a `Present<T>`, the same variant a `Result` carries: build the present case with `present`, the absent case with `none`. Because an `Option<T>` is a different type from `T`, absence is part of the type, so the compiler makes you account for it. Not every customer has a saved payment method:
 
 ```typescript
-import { present, none, isPresent, type Option } from "sumtype";
+import { present, none, isPresent, type Option } from "ts-sumtype";
 
 type Customer = {
   id: string;
@@ -393,7 +393,7 @@ Because `Option` and `Result` share the `present` case, `presentOr` and `toOptio
 Because a `Result` and an `Option` are both sum types with a `Present` case, these read either one, they dispatch on the tag at runtime, so one function serves both:
 
 ```typescript
-import { unwrap, unwrapOr, expect, fromNullable } from "sumtype";
+import { unwrap, unwrapOr, expect, fromNullable } from "ts-sumtype";
 
 unwrap(validateMethod(method));   // PaymentMethod    (Present → value)
 unwrap(c.savedMethod);            // PaymentMethod, or throws if none saved
@@ -416,7 +416,7 @@ fromNullable(raw.savedMethod, "no method"); // Result<PaymentMethod, "no method"
 `all` walks an array of present-shaped values, returning the tuple of payloads or short-circuiting on the first value that isn't a `Present`. Like `chain`, it works over `Result` arrays, `Option` arrays, or a mix, the halt track is whatever non-present variants the array can hold:
 
 ```typescript
-import { all } from "sumtype";
+import { all } from "ts-sumtype";
 
 all([validateMethod(a), validateMethod(b)]);      // Present<[PaymentMethod, PaymentMethod]>
 all([validateMethod(a), validateMethod(bad)]);    // Err, stops at the first invalid method
@@ -434,7 +434,7 @@ An empty array never halts, so `all([])` is always `Present<[]>`.
 `chain` threads a value through a linear sequence of steps. Build it, thread through it, call `.done()` once, and only the plain sum type leaves the expression. It is never a return type or a parameter type; it lives entirely inside a function body.
 
 ```typescript
-import { chain, present, type Present, type Err } from "sumtype";
+import { chain, present, type Present, type Err } from "ts-sumtype";
 
 // .andThen(f) runs f on the value and continues with its payload; anything
 // that isn't a Present from a step (an Err or None) short-circuits the rest.
@@ -509,7 +509,7 @@ type RawEvent =
 `fromFlat(key, value)` moves every key but the discriminant under the tag-named key:
 
 ```typescript
-import { fromFlat } from "sumtype";
+import { fromFlat } from "ts-sumtype";
 
 fromFlat("kind", { kind: "paypal", email: "a@b.com" });
 // { tag: "paypal", paypal: { email: "a@b.com" } }
@@ -530,7 +530,7 @@ type RawEvent =
 `fromKeyed(tagKey, payloadKey, value)` renames rather than flattens:
 
 ```typescript
-import { fromKeyed } from "sumtype";
+import { fromKeyed } from "ts-sumtype";
 
 fromKeyed("type", "details", { type: "paypal", details: { email: "a@b.com" } });
 // { tag: "paypal", paypal: { email: "a@b.com" } }
@@ -543,7 +543,7 @@ Same two-args-returns-a-converter shape as `fromFlat`.
 A bare string-literal union, a currency arriving as `"bitcoin" | "ethereum" | "solana"` from a source you don't control, becomes its unit `Variant`:
 
 ```typescript
-import { fromEnum } from "sumtype";
+import { fromEnum } from "ts-sumtype";
 
 fromEnum("bitcoin"); // { tag: "bitcoin", bitcoin: undefined }
 ```
@@ -578,11 +578,11 @@ This is the same representation this README argued against building new code aro
 The root export re-exports everything. Each module is also individually importable:
 
 ```ts
-import { present } from "sumtype/result";
-import { matchTag } from "sumtype/match";
+import { present } from "ts-sumtype/result";
+import { matchTag } from "ts-sumtype/match";
 ```
 
-`sumtype/variant`, `/match`, `/present`, `/result`, `/option`, `/chain`, `/adapt`.
+`ts-sumtype/variant`, `/match`, `/present`, `/result`, `/option`, `/chain`, `/adapt`.
 
 ---
 

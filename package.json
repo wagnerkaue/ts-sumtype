@@ -1,16 +1,16 @@
 {
-  "name": "sumtype",
+  "name": "ts-sumtype",
   "version": "0.2.0",
   "description": "Tagged unions with one primitive: Variant, matchTag, Result, Option, chain.",
   "license": "MIT",
   "author": "wagnerkaue <wagnerkauemds@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/wagnerkaue/sumtype.git"
+    "url": "git+https://github.com/wagnerkaue/ts-sumtype.git"
   },
-  "homepage": "https://github.com/wagnerkaue/sumtype#readme",
+  "homepage": "https://github.com/wagnerkaue/ts-sumtype#readme",
   "bugs": {
-    "url": "https://github.com/wagnerkaue/sumtype/issues"
+    "url": "https://github.com/wagnerkaue/ts-sumtype/issues"
   },
   "keywords": [
     "sum-types",
