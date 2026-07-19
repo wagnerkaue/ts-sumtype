@@ -3,6 +3,25 @@
   "version": "0.2.0",
   "description": "Tagged unions with one primitive: Variant, matchTag, Result, Option, chain.",
   "license": "MIT",
+  "author": "wagnerkaue <wagnerkauemds@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wagnerkaue/sumtype.git"
+  },
+  "homepage": "https://github.com/wagnerkaue/sumtype#readme",
+  "bugs": {
+    "url": "https://github.com/wagnerkaue/sumtype/issues"
+  },
+  "keywords": [
+    "sum-types",
+    "tagged-union",
+    "discriminated-union",
+    "variant",
+    "pattern-matching",
+    "result",
+    "option",
+    "typescript"
+  ],
   "type": "module",
   "sideEffects": false,
   "engines": { "node": ">=18" },
