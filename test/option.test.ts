@@ -1,19 +1,19 @@
 import { describe, it, expect } from "vitest";
-import { present, none, isPresent, isNone, presentOr } from "../src/index";
+import { some, none, isSome, isNone, someOr } from "../src/index";
 
 describe("option", () => {
-  it("present and none deep-equal expected shapes", () => {
-    expect(present("x")).toEqual({ tag: "present", present: "x" });
-    expect(none()).toEqual({ tag: "none", none: undefined });
+  it("some and none deep-equal expected shapes", () => {
+    expect(some("x")).toEqual({ tag: "some", some: "x" });
+    expect(none()).toEqual({ tag: "none", none: null });
   });
 
-  it("isPresent and isNone", () => {
-    expect(isPresent(present(1))).toBe(true);
+  it("isSome and isNone", () => {
+    expect(isSome(some(1))).toBe(true);
     expect(isNone(none())).toBe(true);
   });
 
-  it("presentOr converts Option to Result", () => {
-    expect(presentOr(present(1), "missing")).toEqual({ tag: "present", present: 1 });
-    expect(presentOr(none(), "missing")).toEqual({ tag: "error", error: "missing" });
+  it("someOr converts Option to Result", () => {
+    expect(someOr(some(1), "missing")).toEqual({ tag: "ok", ok: 1 });
+    expect(someOr(none(), "missing")).toEqual({ tag: "error", error: "missing" });
   });
 });

@@ -1,7 +1,7 @@
 {
   "name": "ts-sumtype",
-  "version": "0.2.0",
-  "description": "Tagged unions with one primitive: Variant, matchTag, Result, Option, chain.",
+  "version": "0.3.0",
+  "description": "Tagged unions with one primitive: Sum, matchTag, Result, Option.",
   "license": "MIT",
   "author": "wagnerkaue <wagnerkauemds@gmail.com>",
   "repository": {
@@ -42,10 +42,6 @@
       "import": { "types": "./dist/match.d.ts", "default": "./dist/match.js" },
       "require": { "types": "./dist/match.d.cts", "default": "./dist/match.cjs" }
     },
-    "./present": {
-      "import": { "types": "./dist/present.d.ts", "default": "./dist/present.js" },
-      "require": { "types": "./dist/present.d.cts", "default": "./dist/present.cjs" }
-    },
     "./result": {
       "import": { "types": "./dist/result.d.ts", "default": "./dist/result.js" },
       "require": { "types": "./dist/result.d.cts", "default": "./dist/result.cjs" }
@@ -54,9 +50,9 @@
       "import": { "types": "./dist/option.d.ts", "default": "./dist/option.js" },
       "require": { "types": "./dist/option.d.cts", "default": "./dist/option.cjs" }
     },
-    "./chain": {
-      "import": { "types": "./dist/chain.d.ts", "default": "./dist/chain.js" },
-      "require": { "types": "./dist/chain.d.cts", "default": "./dist/chain.cjs" }
+    "./unwrap": {
+      "import": { "types": "./dist/unwrap.d.ts", "default": "./dist/unwrap.js" },
+      "require": { "types": "./dist/unwrap.d.cts", "default": "./dist/unwrap.cjs" }
     },
     "./adapt": {
       "import": { "types": "./dist/adapt.d.ts", "default": "./dist/adapt.js" },
@@ -65,7 +61,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/variant.ts src/match.ts src/present.ts src/result.ts src/option.ts src/chain.ts src/adapt.ts --format esm,cjs --dts --target es2022 --out-dir dist --clean",
+    "build": "tsup src/index.ts src/variant.ts src/match.ts src/result.ts src/option.ts src/unwrap.ts src/adapt.ts --format esm,cjs --dts --target es2022 --out-dir dist --clean",
     "typecheck": "tsc -p tsconfig.json",
     "test:types": "tsc -p tsconfig.typetests.json",
     "test": "vitest run",

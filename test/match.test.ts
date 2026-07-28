@@ -11,19 +11,19 @@ describe("matchTag", () => {
   });
 
   it("function arm receives payload", () => {
-    expect(matchTag(variant("nav", { path: "/a" }), { nav: (p: { path: string }) => p.path }, "fb")).toBe("/a");
+    expect(matchTag(variant({ nav: { path: "/a" } }), { nav: (p: { path: string }) => p.path }, "fb")).toBe("/a");
   });
 
-  it("unit variant handler receives undefined", () => {
+  it("unit variant handler receives null", () => {
     const handler = vi.fn(() => "handled");
-    matchTag(variant("idle"), { idle: handler });
-    expect(handler).toHaveBeenCalledWith(undefined);
+    matchTag(variant({ idle: null }), { idle: handler });
+    expect(handler).toHaveBeenCalledWith(null);
   });
 
   it("value arm is returned by reference; nested function is not invoked", () => {
     const fn = vi.fn();
     const arm = { nested: fn };
-    const result = matchTag(variant("x", 1), { x: arm });
+    const result = matchTag(variant({ x: 1 }), { x: arm });
     expect(result).toBe(arm);
     expect(fn).not.toHaveBeenCalled();
   });
@@ -40,10 +40,10 @@ describe("matchTag", () => {
     expect(result).toBe("idle");
   });
 
-  it("variant round-trips through JSON", () => {
-    const r = variant("ok", 1);
+  it("variant round-trips through JSON, payload key included even when empty", () => {
+    const r = variant({ ok: 1 });
     expect(JSON.parse(JSON.stringify(r))).toEqual({ tag: "ok", ok: 1 });
-    const n = variant("none");
-    expect(JSON.parse(JSON.stringify(n))).toEqual({ tag: "none" });
+    const n = variant({ none: null });
+    expect(JSON.parse(JSON.stringify(n))).toEqual({ tag: "none", none: null });
   });
 });

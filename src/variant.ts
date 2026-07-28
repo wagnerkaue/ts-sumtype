@@ -1,16 +1,18 @@
-/** A case with a `tag` naming it and a payload stored under a key named after that tag. */
-export type Variant<K extends string, T = undefined> = {
-  readonly tag: K;
-} & {
-  readonly [P in K]: T;
-};
+/** A union with one case per key of `Cases`: `{ tag: K } & Pick<Cases, K>`, for every `K`, joined with `|`. */
+export type Sum<Cases extends Record<string, unknown>> = {
+  [K in keyof Cases]: { readonly tag: K } & Pick<Cases, K>;
+}[keyof Cases];
 
-/** Builds a `Variant` with no payload. */
-export function variant<K extends string>(tag: K): Variant<K>;
-/** Builds a `Variant` carrying `payload` under the tag-named key. */
-export function variant<K extends string, T>(tag: K, payload: T): Variant<K, T>;
-export function variant(tag: string, ...args: unknown[]): unknown {
-  return { tag, [tag]: args[0] };
+/** Rejects `Shape` unless it has exactly one key — the constraint `variant()`/`tagged()` build against. */
+type SingleKeyed<Shape extends Record<string, unknown>, K = keyof Shape> =
+  K extends keyof Shape ? ([Exclude<keyof Shape, K>] extends [never] ? Shape : never) : never;
+
+/** Builds the one-case `Sum` for a single-key object: `variant({ paren: expr })`. */
+export function variant<Shape extends Record<string, unknown>>(
+  shape: Shape & SingleKeyed<Shape>,
+): Sum<Shape> {
+  const tag = Object.keys(shape)[0] as keyof Shape;
+  return { tag, ...(shape as object) } as Sum<Shape>;
 }
 
 /** Type guard: true when `v.tag` is one of `tags`, narrowing `v` to that member. */
@@ -21,7 +23,7 @@ export function isVariant<V extends { tag: string }, const K extends V["tag"]>(
   return (tags as readonly string[]).includes(v.tag);
 }
 
-/** The union of tags a `Variant` union can carry. */
+/** The union of tags a `Sum`/tagged union can carry. */
 export type TagOf<V extends { tag: string }> = V["tag"];
 /** The member of `V` whose tag is `K`. */
 export type ExtractVariant<V extends { tag: string }, K extends TagOf<V>> = Extract<V, { tag: K }>;
@@ -29,31 +31,32 @@ export type ExtractVariant<V extends { tag: string }, K extends TagOf<V>> = Extr
 export type PayloadOf<V extends { tag: string }, K extends TagOf<V>> =
   K extends unknown ? (ExtractVariant<V, K> extends Record<K, infer T> ? T : never) : never;
 
-/** A `Variant` nested one level per entry in `Tags`, with `Inner` at the center. */
+/** A single case nested one level per entry in `Tags`, with `Inner` at the center. */
 export type NestVariant<Tags extends readonly string[], Inner> =
   Tags extends readonly [infer Head extends string, ...infer Rest extends string[]]
-    ? Variant<Head, NestVariant<Rest, Inner>>
+    ? Sum<Record<Head, NestVariant<Rest, Inner>>>
     : Inner;
 
-/** Builds a constructor that nests every `Variant` it makes under the given outer tags, in order. */
+/** Builds a constructor that nests every case it makes under the given outer tags, in order. */
 export function tagged<const Prefixes extends readonly string[]>(...prefixes: Prefixes) {
-  function build<K extends string>(tag: K): NestVariant<Prefixes, Variant<K>>;
-  function build<K extends string, T>(tag: K, payload: T): NestVariant<Prefixes, Variant<K, T>>;
-  function build(tag: string, ...args: unknown[]): unknown {
-    let result: unknown = { tag, [tag]: args[0] };
+  function build<Shape extends Record<string, unknown>>(
+    shape: Shape & SingleKeyed<Shape>,
+  ): NestVariant<Prefixes, Sum<Shape>> {
+    const tag = Object.keys(shape)[0];
+    let result: unknown = { tag, ...(shape as object) };
     for (let i = prefixes.length - 1; i >= 0; i--) {
       const prefix = prefixes[i];
       result = { tag: prefix, [prefix]: result };
     }
-    return result;
+    return result as NestVariant<Prefixes, Sum<Shape>>;
   }
   return build;
 }
 
 /** Returns a copy of `original` with its payload replaced by `newPayload`; the tag is unchanged. */
 export function withPayload<V extends { tag: string }>(
-    original: V,
-    newPayload: PayloadOf<V, V["tag"]>
+  original: V,
+  newPayload: PayloadOf<V, V["tag"]>,
 ): V {
-    return { tag: original.tag, [original.tag]: newPayload } as unknown as V;
+  return { tag: original.tag, [original.tag]: newPayload } as unknown as V;
 }

@@ -3,17 +3,17 @@ import { fromFlat, fromKeyed, fromEnum } from "../src/index";
 
 describe("fromFlat", () => {
   it("moves every key but the discriminant under the tag-named key", () => {
-    expect(fromFlat("type", { type: "video", duration: 4, size: 1024 })).toEqual({
+    expect(fromFlat("type")({ type: "video", duration: 4, size: 1024 })).toEqual({
       tag: "video",
       video: { duration: 4, size: 1024 },
     });
   });
 
   it("handles a union member with no extra keys", () => {
-    expect(fromFlat("type", { type: "idle" })).toEqual({ tag: "idle", idle: {} });
+    expect(fromFlat("type")({ type: "idle" })).toEqual({ tag: "idle", idle: {} });
   });
 
-  it("called with one argument returns a reusable converter", () => {
+  it("returns a reusable converter", () => {
     const toVariant = fromFlat("type");
     expect(toVariant({ type: "video", duration: 4, size: 1024 })).toEqual({
       tag: "video",
@@ -39,7 +39,7 @@ describe("fromFlat", () => {
 
 describe("fromKeyed", () => {
   it("renames the tag key and picks the payload key", () => {
-    expect(fromKeyed("kind", "data", { kind: "video", data: { duration: 4 } })).toEqual({
+    expect(fromKeyed("kind", "data")({ kind: "video", data: { duration: 4 } })).toEqual({
       tag: "video",
       video: { duration: 4 },
     });
@@ -47,11 +47,11 @@ describe("fromKeyed", () => {
 
   it("leaves any other keys on the source object behind", () => {
     expect(
-      fromKeyed("kind", "data", { kind: "video", data: { duration: 4 }, extra: "ignored" }),
+      fromKeyed("kind", "data")({ kind: "video", data: { duration: 4 }, extra: "ignored" }),
     ).toEqual({ tag: "video", video: { duration: 4 } });
   });
 
-  it("called with two arguments returns a reusable converter", () => {
+  it("returns a reusable converter", () => {
     const toVariant = fromKeyed("kind", "data");
     expect(toVariant({ kind: "video", data: { duration: 4 } })).toEqual({
       tag: "video",
@@ -62,15 +62,15 @@ describe("fromKeyed", () => {
 
 describe("fromEnum", () => {
   it("wraps a bare string as a unit variant", () => {
-    expect(fromEnum("active")).toEqual({ tag: "active", active: undefined });
+    expect(fromEnum("active")).toEqual({ tag: "active", active: null });
   });
 
   it("is safe to pass to Array.prototype.map (unlike variant, ignores index/array args)", () => {
     const statuses = ["active", "pending", "inactive"];
     expect(statuses.map(fromEnum)).toEqual([
-      { tag: "active", active: undefined },
-      { tag: "pending", pending: undefined },
-      { tag: "inactive", inactive: undefined },
+      { tag: "active", active: null },
+      { tag: "pending", pending: null },
+      { tag: "inactive", inactive: null },
     ]);
   });
 });

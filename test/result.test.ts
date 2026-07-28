@@ -1,77 +1,81 @@
 import { describe, it, expect } from "vitest";
-import { present, err, isPresent, isErr, isVariant, fromThrowable, allErrors, toOption, variant, chain } from "../src/index";
+import { ok, err, errVariant, isOk, isErr, isVariant, fromThrowable, allErrors, toOption, variant } from "../src/index";
 
 describe("result", () => {
-  it("present(1) deep-equals { tag: 'present', present: 1 }", () => {
-    expect(present(1)).toEqual({ tag: "present", present: 1 });
+  it("ok(1) deep-equals { tag: 'ok', ok: 1 }", () => {
+    expect(ok(1)).toEqual({ tag: "ok", ok: 1 });
   });
 
-  it("err('parse', { input }) deep-equals nested structure", () => {
-    expect(err("parse", { input: "x" })).toEqual({
+  it("err(payload) wraps the payload as-is, no tagging imposed", () => {
+    expect(err("boom")).toEqual({ tag: "error", error: "boom" });
+    expect(err({ parse: { input: "x" } })).toEqual({
+      tag: "error",
+      error: { parse: { input: "x" } }, // note: not tagged, unlike errVariant below
+    });
+  });
+
+  it("errVariant({ parse: { input } }) deep-equals nested structure", () => {
+    expect(errVariant({ parse: { input: "x" } })).toEqual({
       tag: "error",
       error: { tag: "parse", parse: { input: "x" } },
     });
   });
 
-  it("err('timeout') deep-equals unit-tagged error", () => {
-    expect(err("timeout")).toEqual({
+  it("errVariant({ timeout: null }) deep-equals unit-tagged error", () => {
+    expect(errVariant({ timeout: null })).toEqual({
       tag: "error",
-      error: { tag: "timeout", timeout: undefined },
+      error: { tag: "timeout", timeout: null },
     });
   });
 
-  it("isPresent and isErr", () => {
-    expect(isPresent(present(1))).toBe(true);
-    expect(isErr(present(1))).toBe(false);
+  it("isOk and isErr", () => {
+    expect(isOk(ok(1))).toBe(true);
+    expect(isErr(ok(1))).toBe(false);
   });
 
   it("fromThrowable success and mapped error", () => {
-    expect(fromThrowable(() => 1)).toEqual({ tag: "present", present: 1 });
+    expect(fromThrowable(() => 1)).toEqual({ tag: "ok", ok: 1 });
     const r = fromThrowable(
       () => { throw new Error("x"); },
-      (e) => variant("mapped", String(e)),
+      (e) => variant({ mapped: String(e) }),
     );
     expect(r).toEqual({ tag: "error", error: { tag: "mapped", mapped: "Error: x" } });
   });
 
-  it("allErrors collects all present payloads", () => {
-    expect(allErrors([present(1), present(2)])).toEqual({ tag: "present", present: [1, 2] });
+  it("allErrors collects all ok payloads", () => {
+    expect(allErrors([ok(1), ok(2)])).toEqual({ tag: "ok", ok: [1, 2] });
   });
 
   it("allErrors collects all error payloads", () => {
-    const result = allErrors([present(1), err("a"), err("b")]);
+    const result = allErrors([ok(1), errVariant({ a: null }), errVariant({ b: null })]);
     expect(result).toEqual({
       tag: "error",
       error: [
-        { tag: "a", a: undefined },
-        { tag: "b", b: undefined },
+        { tag: "a", a: null },
+        { tag: "b", b: null },
       ],
     });
   });
 
   it("toOption converts correctly", () => {
-    expect(toOption(present(1))).toEqual({ tag: "present", present: 1 });
-    expect(toOption(err("e"))).toEqual({ tag: "none", none: undefined });
+    expect(toOption(ok(1))).toEqual({ tag: "some", some: 1 });
+    expect(toOption(errVariant({ e: null }))).toEqual({ tag: "none", none: null });
   });
 
-  it("early-return and chain equivalence", () => {
-    function withEarlyReturn(input: string) {
-      const parsed = input.length > 0 ? present(input.length) : err("empty");
+  it("early-return sequences Result steps without a fluent helper", () => {
+    function checkout(input: string) {
+      const parsed = input.length > 0 ? ok(input.length) : errVariant({ empty: null });
       if (isVariant(parsed, "error")) return parsed;
-      const doubled = parsed.present > 10 ? err("too_long") : present(parsed.present * 2);
+      const doubled = parsed.ok > 10 ? errVariant({ too_long: null }) : ok(parsed.ok * 2);
       if (isVariant(doubled, "error")) return doubled;
-      return present(doubled.present);
+      return ok(doubled.ok);
     }
 
-    function withChain(input: string) {
-      return chain(present(input))
-        .andThen((s) => s.length > 0 ? present(s.length) : err("empty"))
-        .andThen((n) => n > 10 ? err("too_long") : present(n * 2))
-        .done();
-    }
-
-    for (const input of ["", "hi", "this is way too long"]) {
-      expect(withChain(input)).toEqual(withEarlyReturn(input));
-    }
+    expect(checkout("")).toEqual({ tag: "error", error: { tag: "empty", empty: null } });
+    expect(checkout("hi")).toEqual({ tag: "ok", ok: 4 });
+    expect(checkout("this is way too long")).toEqual({
+      tag: "error",
+      error: { tag: "too_long", too_long: null },
+    });
   });
 });

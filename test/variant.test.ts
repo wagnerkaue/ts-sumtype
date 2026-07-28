@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { variant, isVariant, type Variant } from "../src/index";
+import { variant, isVariant, type Sum } from "../src/index";
 
 describe("isVariant", () => {
-  type ABC = Variant<"a", number> | Variant<"b", string> | Variant<"c">;
-  const a = variant("a", 1) as ABC;
-  const b = variant("b", "two") as ABC;
-  const c = variant("c") as ABC;
+  type ABC = Sum<{ a: number; b: string; c: null }>;
+  const a = variant({ a: 1 }) as ABC;
+  const b = variant({ b: "two" }) as ABC;
+  const c = variant({ c: null }) as ABC;
 
   it("matches a single tag", () => {
     expect(isVariant(a, "a")).toBe(true);
@@ -24,7 +24,7 @@ describe("isVariant", () => {
   it("narrows in the positive branch", () => {
     const u = a as typeof a | typeof b | typeof c;
     if (isVariant(u, "a", "b")) {
-      // u is now Variant<"a", number> | Variant<"b", string>
+      // u is now Variant<{ a: number }> | Variant<{ b: string }>
       const payload: number | string = isVariant(u, "a") ? u.a : u.b;
       expect(payload).toBe(1);
     } else {
@@ -35,13 +35,13 @@ describe("isVariant", () => {
   it("narrows the else / early-return branch to the complement", () => {
     function firstNonError(u: typeof a | typeof b | typeof c) {
       if (!isVariant(u, "a", "b")) {
-        // u is narrowed to Variant<"c", undefined> here
-        const payload: undefined = u.c;
+        // u is narrowed to Variant<{ c: null }> here
+        const payload: null = u.c;
         return payload;
       }
       return u.tag;
     }
-    expect(firstNonError(c)).toBeUndefined();
+    expect(firstNonError(c)).toBeNull();
     expect(firstNonError(a)).toBe("a");
   });
 });
