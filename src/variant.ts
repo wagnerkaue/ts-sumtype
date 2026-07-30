@@ -1,3 +1,9 @@
+/** The type with exactly one value, `null`; the explicit spelling for a case that carries no payload. */
+export type Unit = null;
+
+/** The one value of `Unit`. */
+export const unit: Unit = null;
+
 /** A union with one case per key of `Cases`: `{ tag: K } & Pick<Cases, K>`, for every `K`, joined with `|`. */
 export type Sum<Cases extends Record<string, unknown>> = {
   [K in keyof Cases]: { readonly tag: K } & Pick<Cases, K>;

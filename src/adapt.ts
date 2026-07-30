@@ -1,4 +1,4 @@
-import { type Sum } from "./variant";
+import { unit, type Sum, type Unit } from "./variant";
 
 /** A flat discriminated union member, with the discriminant moved under its own value as the tag-named key. */
 export type Unflattened<K extends string, T extends Record<K, string>> = T extends any
@@ -34,10 +34,9 @@ export function fromKeyed<K extends string, P extends string>(
   };
 }
 
-/** The unit `Sum` case for one member of a bare string-literal union, distributed member-by-member. */
-export type Unit<K extends string> = K extends any ? Sum<Record<K, null>> : never;
-
 /** Converts a bare string-literal value into its unit `Sum` case. */
-export function fromEnum<K extends string>(value: K): Unit<K> {
-  return { tag: value, [value]: null } as Unit<K>;
+export function fromEnum<K extends string>(
+  value: K,
+): K extends any ? Sum<Record<K, Unit>> : never {
+  return { tag: value, [value]: unit } as K extends any ? Sum<Record<K, Unit>> : never;
 }

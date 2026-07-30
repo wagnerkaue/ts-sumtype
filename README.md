@@ -11,13 +11,13 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [matchTag](#matchtag) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [matchTag](#matchtag) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
-import { variant, matchTag, type Sum } from "ts-sumtype";
+import { variant, matchTag, type Sum, type Unit } from "ts-sumtype";
 
 type PaymentMethod = Sum<{
-  cash: null;
+  cash: Unit;
   paypal: { email: string };
   creditCard: {
     cardNumber: string;
@@ -27,9 +27,9 @@ type PaymentMethod = Sum<{
   crypto: {
     address: string;
     currency: Sum<{
-      bitcoin: null;
-      ethereum: null;
-      solana: null;
+      bitcoin: Unit;
+      ethereum: Unit;
+      solana: Unit;
     }>;
   };
 }>;
@@ -124,7 +124,7 @@ This only works because the tag is a string. Whatever discriminates the union ha
 This union is completely determined by one thing: a mapping from case name to payload type. Write that mapping directly, and the whole union (tag, payload key, and all) is generated from it. `Sum<Cases>` is exactly this, generalized, and `variant(shape)` builds one member of it from a single `{ tag: payload }` pair:
 
 ```typescript
-import { variant, type Sum } from "ts-sumtype";
+import { variant, unit, type Sum, type Unit } from "ts-sumtype";
 
 type PaymentMethod = Sum<{
   cash: CashPayment;
@@ -135,11 +135,11 @@ type PaymentMethod = Sum<{
 variant({ paypal: { email: "a@b.com" } });
 // { tag: "paypal", paypal: { email: "a@b.com" } }
 
-variant({ cash: null });
+variant({ cash: unit });
 // { tag: "cash", cash: null }
 ```
 
-`CashPayment` had no fields to begin with, `cash: null` is the same case with no payload, the key is always present in the record.
+`CashPayment` had no fields to begin with, `cash: unit` is the same case with no payload, the key is always present in the record.
 
 Whether that "nothing to store" is really nothing is worth pinning down, because TypeScript makes it easy to fake a case with no payload using a plain string, and that's a narrower move than it looks. A crypto payment's currency, done the ordinary way, is a string literal union:
 
@@ -158,12 +158,12 @@ It's tempting to read the literal-union version as a discriminated union with no
 
 ```typescript
 type Currency = Sum<{
-  bitcoin: null;
-  ethereum: null;
-  solana: null;
+  bitcoin: Unit;
+  ethereum: Unit;
+  solana: Unit;
 }>;
 
-variant({ bitcoin: null });
+variant({ bitcoin: unit });
 // { tag: "bitcoin", bitcoin: null }
 ```
 
@@ -171,7 +171,7 @@ A `Sum` is a whole state you can hold in one variable, pass, and return; a case'
 
 ```typescript
 type PaymentMethod = Sum<{
-  cash: null;
+  cash: Unit;
   paypal: { email: string };
   creditCard: {
     cardNumber: string;
@@ -186,6 +186,23 @@ type PaymentMethod = Sum<{
 ```
 
 Splitting a sum type into a union of its parts doesn't change it: `Sum<{ a: X; b: Y }>` and `Sum<{ a: X }> | Sum<{ b: Y }>` are the same type. `Ok`, `Some`, `Err`, and `None`, met below, are declared this way (individually, then joined with `|`) since they're discovered one at a time rather than known as a single table upfront.
+
+---
+
+## Unit
+
+`Unit`, used above for `cash`, `bitcoin`, `ethereum`, and `solana`, isn't a type this library invented, it's `null`, under a name that says what it's for. `null` isn't a placeholder for "payload not implemented yet", it's the correct type for "no data": type theory calls a type with exactly one possible value a *unit type*, `null` has exactly one value, `null` itself, so it already was one before anything here named it. This is a different question from optionality: whether a case carries data is `Unit`, whether a value is present at all is [`Option<T>`](#option), and the two don't overlap, `Option<Unit>` (present-but-empty vs. absent) is a coherent type distinct from `Unit` alone.
+
+TypeScript actually has two candidate unit types, `null` and `undefined`, and either would type-check here, but they behave differently once JSON is involved: `JSON.stringify({ bitcoin: undefined })` drops the key (`"{}"`), `JSON.stringify({ bitcoin: null })` keeps it (`'{"bitcoin":null}'`). A case's payload key is supposed to always be present, so `undefined`'s asymmetric handling would silently break that on the wire; `null` doesn't have that failure mode, which is why it's the one used throughout, not an arbitrary pick between two otherwise-equivalent options.
+
+`Unit` and `unit` name that choice explicitly instead of leaving it implicit in a bare `null`:
+
+```typescript
+export type Unit = null;
+export const unit: Unit = null;
+```
+
+`Sum<{ bitcoin: null }>` and `Sum<{ bitcoin: Unit }>` are the same type, `null` and `unit` the same value, so either spelling is accepted anywhere the other is; `null`/`variant({ bitcoin: null })` still work everywhere, `Unit`/`unit` exist for when spelling out the intent is worth the extra word, which is the spelling the rest of this README uses from here on.
 
 ---
 
@@ -223,7 +240,7 @@ A variant serializes as-is, no `toJSON`, no revival step, and the payload key su
 JSON.stringify(variant({ paypal: { email: "a@b.com" } }));
 // {"tag":"paypal","paypal":{"email":"a@b.com"}}
 
-JSON.stringify(variant({ cash: null }));
+JSON.stringify(variant({ cash: unit }));
 // {"tag":"cash","cash":null}
 ```
 
@@ -247,9 +264,9 @@ Every tag is checked against `v`'s own tags, so a typo is a compile error. Becau
 
 ```typescript
 type Muted = Sum<{
-  off: null;
+  off: Unit;
   temporary: { until: Date };
-  forever: null;
+  forever: Unit;
 }>;
 
 function isMutedNow(m: Muted): boolean {
@@ -338,13 +355,13 @@ type Result<T, E> =
 This is the boxed shape rejected back in [Sum](#sum), with the same cost: `value` and `error` are generic slots, not names, so there's nothing to read symmetrically the way `method.creditCard` does. It also can't take the fix `PaymentMethod` took instead: `true` and `false` aren't strings, so they can't double as their own payload's key the way `"cash"` and `"paypal"` do. `Result<T, E>` is `Ok<T> | Err<E>` instead: two string-tagged cases, built from the same `Sum` convention as everything else. The success case keeps the word `ok`, it just becomes a string tag instead of a boolean field, which is exactly what lets it double as its own payload's key: `value` becomes `.ok`, `error` becomes `.error`, each reachable by its own name instead of a shared placeholder. `ok(value)` builds the success case directly; `errVariant(shape)` builds the failure case with its own payload tagged too, so when several errors can occur they stay discriminable by their inner tag (more on the plain `err(payload)` it's built from, below):
 
 ```typescript
-import { ok, errVariant, type Result } from "ts-sumtype";
+import { ok, errVariant, unit, type Result } from "ts-sumtype";
 
 type Receipt = { id: string };
 
 type GatewayErr = Sum<{
   declined: { reason: string };
-  timeout: null;
+  timeout: Unit;
 }>;
 
 function chargeGateway(
@@ -359,7 +376,7 @@ function chargeGateway(
     });
   }
   if (response.status === 504) {
-    return errVariant({ timeout: null });
+    return errVariant({ timeout: unit });
   }
   return ok({ id: response.body.receiptId });
 }
@@ -405,7 +422,7 @@ const declined = tagged("error", "declined");
 declined({ insufficientFunds: { available: 420 } });
 // { tag: "error", error: { tag: "declined", declined: { tag: "insufficientFunds", insufficientFunds: { available: 420 } } } }
 
-declined({ stolenCard: null });
+declined({ stolenCard: unit });
 // { tag: "error", error: { tag: "declined", declined: { tag: "stolenCard", stolenCard: null } } }
 ```
 
@@ -415,7 +432,7 @@ declined({ stolenCard: null });
 type DeclinedErr = Sum<{
   declined: Sum<{
     insufficientFunds: { available: number };
-    stolenCard: null;
+    stolenCard: Unit;
   }>;
 }>;
 ```
@@ -479,8 +496,8 @@ import { unwrap, unwrapOr, expect, fromNullable } from "ts-sumtype";
 unwrap(authorizeMethod(method));   // PaymentMethod    (Ok → value)
 unwrap(c.savedMethod);             // PaymentMethod, or throws if none saved
 
-unwrapOr(authorizeMethod(method), variant({ cash: null }));  // the authorized method, or cash if it was declined
-unwrapOr(c.savedMethod, variant({ cash: null }));            // the saved method, or cash as a default
+unwrapOr(authorizeMethod(method), variant({ cash: unit }));  // the authorized method, or cash if it was declined
+unwrapOr(c.savedMethod, variant({ cash: unit }));             // the saved method, or cash as a default
 
 expect(c.savedMethod, "no saved payment method"); // PaymentMethod, or throws Error("no saved payment method")
 ```
@@ -584,7 +601,7 @@ events.map(fromKeyed("type", "details"));
 
 ### fromEnum
 
-A bare string-literal union, a currency arriving as `"bitcoin" | "ethereum" | "solana"` from a source you don't control, becomes its unit `Sum` case:
+A bare string-literal union, a currency arriving as `"bitcoin" | "ethereum" | "solana"` from a source you don't control, becomes its `Sum` case with a `Unit` payload:
 
 ```typescript
 import { fromEnum } from "ts-sumtype";
@@ -598,10 +615,10 @@ This is the same representation this README argued against building new code aro
 
 ## Notes
 
-- **The payload key is named after the tag, and always present.** `{ tag: "cash" }` alone does not satisfy `Sum<{ cash: null }>`, write `variant({ cash: null })` or `{ tag: "cash", cash: null }`.
+- **The payload key is named after the tag, and always present.** `{ tag: "cash" }` alone does not satisfy `Sum<{ cash: Unit }>`, write `variant({ cash: unit })` or `{ tag: "cash", cash: null }`.
 - **`"tag"` is a reserved case name.** Its payload key would collide with the discriminant, so `Sum<{ tag: T }>` intersects the discriminant with `T` on the same field; for most `T` that leaves `tag` uninhabitable. Pick any other case name.
 - **Variance is covariant.** `Result<Receipt, never>` is assignable to `Result<Receipt, GatewayErr>`; the reverse (narrowing) is a type error.
-- **Payloads must be JSON-safe** to survive a `JSON.stringify` / `JSON.parse` round-trip: functions, symbols, and `bigint` don't survive it, and neither does `undefined`, which is silently dropped from whatever key holds it. That last one is why empty payloads are typed `null` rather than `undefined`: `null` is valid JSON, so the payload key stays present on the wire, the same as every other case.
+- **Payloads must be JSON-safe** to survive a `JSON.stringify` / `JSON.parse` round-trip: functions, symbols, and `bigint` don't survive it, and neither does `undefined`, which is silently dropped from whatever key holds it. That last one is why empty payloads are typed `Unit`/`null` rather than `undefined`, see [Unit](#unit).
 - **A `const` whose initializer is narrower than its declared type** can confuse overload resolution at a generic call site:
 
   ```typescript
