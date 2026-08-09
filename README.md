@@ -11,7 +11,7 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Unit](#unit) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [matchTag](#matchtag) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [matchTag](#matchtag) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipeResult / pipeOption](#piperesult--pipeoption) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
 import { variant, matchTag, type Sum, type Unit } from "ts-sumtype";
@@ -440,7 +440,7 @@ type DeclinedErr = Sum<{
 `errVariant` is sugar over two calls: `errVariant({ declined: {...} })` is `err(variant({ declined: {...} }))`. When the error has no tag of its own (a caught `unknown`, a bare sentinel, or a value that's already built), skip the tagging and construct it directly with `err(payload)`, the same way `ok(value)` builds the success case:
 
 ```typescript
-err(caught); // { tag: "error", error: caught } -- whatever caught is, stored as-is
+err(caught); // { tag: "error", error: caught }: whatever caught is, stored as-is
 ```
 
 ### Functions on Result
@@ -524,6 +524,41 @@ all([customerA.savedMethod, noMethod.savedMethod]);  // None, stops at the first
 ```
 
 An empty array defaults to `Ok<[]>`; annotate it as an `Option` array (`[] as Option<never>[]`) if you need `Some<[]>` instead.
+
+### pipeResult / pipeOption
+
+`all` collects a fixed array of independent `Result`s/`Option`s. The other common shape is a *sequence*: each step depends on the previous one's success value, and any step failing should stop the rest from running. `pipeResult(value, ...fns)` threads `value` through each function left to right, feeding each one the previous step's unwrapped `ok`; a step returning `error` halts the pipe immediately, returned as-is, and the remaining functions never run:
+
+```typescript
+import { pipeResult } from "ts-sumtype";
+
+pipeResult(
+  authorizeMethod(method),          // Result<PaymentMethod, AuthorizeErr>
+  (m) => chargeGateway(m, cents),   // Result<Receipt, GatewayErr>
+  (r) => confirmReceipt(r),         // Result<Confirmation, ConfirmErr>
+);
+// Result<Confirmation, AuthorizeErr | GatewayErr | ConfirmErr>
+```
+
+`pipeOption(value, ...fns)` is the same shape over `Option`, halting on `none` instead of `error`:
+
+```typescript
+import { pipeOption } from "ts-sumtype";
+
+pipeOption(
+  raw.savedMethod,                  // Option<PaymentMethod>
+  (m) => lookupNickname(m),         // Option<string>
+);
+// Option<string>
+```
+
+`value` itself doesn't have to already be wrapped, and neither does a step's return: a plain value (not a `Result`/`Option`) is passed straight through to the next step and can never halt. That's useful for a pure transform in the middle of a pipe, `(m) => m.id` say, without wrapping it in `ok(...)`/`some(...)` just to satisfy the types:
+
+```typescript
+pipeResult(raw, (r) => authorizeMethod(r.method), (m) => m.id, (id) => chargeGateway(id, cents));
+```
+
+Each step's parameter type is checked against the previous step's declared return type, so feeding a step the wrong shape is a compile error at that step, not a runtime surprise; both functions support up to 8 steps. A `pipeResult` step can't return an `Option` (or a `pipeOption` step a `Result`); convert at the boundary with [`someOr`](#option)/[`toOption`](#functions-on-result) between two separate calls the same way the rest of this README already does.
 
 ---
 
@@ -639,7 +674,7 @@ import { ok } from "ts-sumtype/result";
 import { matchTag } from "ts-sumtype/match";
 ```
 
-`ts-sumtype/variant`, `/match`, `/result`, `/option`, `/unwrap`, `/adapt`.
+`ts-sumtype/variant`, `/match`, `/result`, `/option`, `/unwrap`, `/adapt`, `/pipe`.
 
 ---
 

@@ -58,10 +58,14 @@
       "import": { "types": "./dist/adapt.d.ts", "default": "./dist/adapt.js" },
       "require": { "types": "./dist/adapt.d.cts", "default": "./dist/adapt.cjs" }
     },
+    "./pipe": {
+      "import": { "types": "./dist/pipe.d.ts", "default": "./dist/pipe.js" },
+      "require": { "types": "./dist/pipe.d.cts", "default": "./dist/pipe.cjs" }
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/variant.ts src/match.ts src/result.ts src/option.ts src/unwrap.ts src/adapt.ts --format esm,cjs --dts --target es2022 --out-dir dist --clean",
+    "build": "tsup src/index.ts src/variant.ts src/match.ts src/result.ts src/option.ts src/unwrap.ts src/adapt.ts src/pipe.ts --format esm,cjs --dts --target es2022 --out-dir dist --clean",
     "typecheck": "tsc -p tsconfig.json",
     "test:types": "tsc -p tsconfig.typetests.json",
     "test": "vitest run",

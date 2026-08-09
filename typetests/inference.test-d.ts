@@ -7,6 +7,7 @@ import {
   type Some, type None, type Option,
   unwrap, unwrapOr, expect, fromNullable, all,
   fromFlat, fromKeyed, fromEnum, type Unflattened, type Rekeyed,
+  pipeResult, pipeOption,
 } from "../src/index";
 
 // ── T1: Sum basics -- a single case is just Sum with one key
@@ -106,8 +107,9 @@ declare const action: Action;
 const m1 = matchTag(action, { go: (p) => p.n, stop: -1 });
 const m1Probe: number = m1;
 
-// ── T9: multi-step Result/Option composition via early-return (chain was removed;
-// this is the same "return type is the union of every branch's outcome" shape it used to cover)
+// ── T9: multi-step Result/Option composition via early-return (chain was replaced by
+// pipeResult/pipeOption, see T12; this is the same "return type is the union of every branch's
+// outcome" shape either covers, one sum type at a time)
 type NotFoundErr = Sum<{ not_found: { id: number } }>;
 declare function parseId(s: string): Result<number, ParseErr>;
 declare function findUser(id: number): Result<{ name: string }, NotFoundErr>;
@@ -177,3 +179,42 @@ type Fanned = Sum<{ a: number; b: string }>;
 type Joined = Sum<{ a: number }> | Sum<{ b: string }>;
 const fannedAsJoined: Joined = variant({ a: 1 }) as Fanned;
 const joinedAsFanned: Fanned = variant({ b: "x" }) as Joined;
+
+// ── T12: pipeResult / pipeOption -- the two Result steps from T9's chain, threaded through
+// pipeResult instead of early-return, plus a raw seed and a separate pipeOption chain
+declare function chargeGateway(id: number, cents: number): Result<{ receiptId: string }, ParseErr>;
+const p1 = pipeResult(parseId("42"), (id) => findUser(id));
+const p1Probe: Result<{ name: string }, ParseErr | NotFoundErr> = p1;
+
+const p2 = pipeResult(parseId("42"), (id) => chargeGateway(id, 500));
+const p2Probe: Result<{ receiptId: string }, ParseErr> = p2;
+
+// a raw seed, and a plain (unwrapped) passthrough step mixed with a Result step
+const p3 = pipeResult(2, (n) => n + 1, (n) => (n > 0 ? ok(n) : err("negative" as const)));
+const p3Probe: Result<number, "negative"> = p3;
+
+// pipeResult(value) with no steps returns value unchanged
+const p4 = pipeResult(5);
+const p4Probe: number = p4;
+
+// a mismatched step -- fed the wrong input type -- is a compile error at that step
+pipeResult(
+  parseId("42"),
+  // @ts-expect-error findUser expects a number (parseId's payload), not a string
+  (id: string) => findUser(id),
+);
+
+declare function findUserOption(id: number): Option<{ name: string }>;
+const p5 = pipeOption(some(1), (id) => findUserOption(id), (u) => nicknameOf(u));
+const p5Probe: Option<string> = p5;
+
+// pipeOption(value) with no steps returns value unchanged
+const p6 = pipeOption(some("x"));
+const p6Probe: Option<string> = p6;
+
+// a mismatched step is a compile error here too
+pipeOption(
+  some(1),
+  // @ts-expect-error findUserOption expects a number, not a string
+  (id: string) => findUserOption(id),
+);
