@@ -15,13 +15,13 @@ describe("pipeResult", () => {
     expect(step2).not.toHaveBeenCalled();
   });
 
-  it("a raw seed and raw (unwrapped) passthrough steps are allowed", () => {
-    expect(pipeResult(10, (n) => n + 1)).toBe(11);
+  it("a raw seed and a raw (unwrapped) passthrough step are allowed, but the result is always a Result", () => {
+    expect(pipeResult(10, (n) => n + 1)).toEqual({ tag: "ok", ok: 11 });
     expect(pipeResult(10, (n) => n + 1, (n) => ok(n * 2))).toEqual({ tag: "ok", ok: 22 });
   });
 
-  it("pipeResult(value) with no steps returns value unchanged", () => {
-    expect(pipeResult(10)).toBe(10);
+  it("pipeResult(value) with no steps still returns a Result", () => {
+    expect(pipeResult(10)).toEqual({ tag: "ok", ok: 10 });
     expect(pipeResult(ok(1))).toEqual({ tag: "ok", ok: 1 });
   });
 
@@ -49,13 +49,13 @@ describe("pipeOption", () => {
     expect(step2).not.toHaveBeenCalled();
   });
 
-  it("a raw seed and raw (unwrapped) passthrough steps are allowed", () => {
-    expect(pipeOption(10, (n) => n + 1)).toBe(11);
+  it("a raw seed and a raw (unwrapped) passthrough step are allowed, but the result is always an Option", () => {
+    expect(pipeOption(10, (n) => n + 1)).toEqual({ tag: "some", some: 11 });
     expect(pipeOption(10, (n) => n + 1, (n) => some(n * 2))).toEqual({ tag: "some", some: 22 });
   });
 
-  it("pipeOption(value) with no steps returns value unchanged", () => {
-    expect(pipeOption(10)).toBe(10);
+  it("pipeOption(value) with no steps still returns an Option", () => {
+    expect(pipeOption(10)).toEqual({ tag: "some", some: 10 });
     expect(pipeOption(some(1))).toEqual({ tag: "some", some: 1 });
   });
 

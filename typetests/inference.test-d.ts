@@ -193,9 +193,9 @@ const p2Probe: Result<{ receiptId: string }, ParseErr> = p2;
 const p3 = pipeResult(2, (n) => n + 1, (n) => (n > 0 ? ok(n) : err("negative" as const)));
 const p3Probe: Result<number, "negative"> = p3;
 
-// pipeResult(value) with no steps returns value unchanged
+// pipeResult(value) with no steps still returns a Result: a raw seed is wrapped in ok(...)
 const p4 = pipeResult(5);
-const p4Probe: number = p4;
+const p4Probe: Ok<number> = p4;
 
 // a mismatched step -- fed the wrong input type -- is a compile error at that step
 pipeResult(
@@ -208,9 +208,13 @@ declare function findUserOption(id: number): Option<{ name: string }>;
 const p5 = pipeOption(some(1), (id) => findUserOption(id), (u) => nicknameOf(u));
 const p5Probe: Option<string> = p5;
 
-// pipeOption(value) with no steps returns value unchanged
+// pipeOption(value) with no steps still returns an Option: an already-wrapped seed passes through
 const p6 = pipeOption(some("x"));
 const p6Probe: Option<string> = p6;
+
+// ... and a raw seed is wrapped in some(...)
+const p7 = pipeOption("x");
+const p7Probe: Some<string> = p7;
 
 // a mismatched step is a compile error here too
 pipeOption(
@@ -218,3 +222,20 @@ pipeOption(
   // @ts-expect-error findUserOption expects a number, not a string
   (id: string) => findUserOption(id),
 );
+
+// regression guard: pipeOption's seed used to be typed via a conditional unwrap of its own type
+// (`Unwrap<V>`), which TypeScript can't resolve for a bare unconstrained generic -- rejecting this
+// perfectly valid generic caller with "B could be instantiated with an arbitrary type ...". The
+// seed's expected type is now inferred from the first step instead, which stays sound for any V.
+type Isomorphism<A, B, K> = {
+  canon: (a: A) => Option<K>;
+  do: (a: A) => Option<B>;
+  undo: (b: B) => Option<A>;
+};
+function inverse<A, B, K>(i: Isomorphism<A, B, K>): Isomorphism<B, A, K> {
+  return {
+    canon: (b) => pipeOption(b, i.undo, i.canon),
+    do: i.undo,
+    undo: i.do,
+  };
+}

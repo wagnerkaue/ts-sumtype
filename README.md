@@ -558,7 +558,9 @@ pipeOption(
 pipeResult(raw, (r) => authorizeMethod(r.method), (m) => m.id, (id) => chargeGateway(id, cents));
 ```
 
-Each step's parameter type is checked against the previous step's declared return type, so feeding a step the wrong shape is a compile error at that step, not a runtime surprise; both functions support up to 8 steps. A `pipeResult` step can't return an `Option` (or a `pipeOption` step a `Result`); convert at the boundary with [`someOr`](#option)/[`toOption`](#functions-on-result) between two separate calls the same way the rest of this README already does.
+`pipeResult` always returns a `Result`, `pipeOption` always returns an `Option`, no exceptions: if the *last* step (or a zero-step `value`) is a plain value rather than one of these, it's wrapped in `ok(...)`/`some(...)`, so `pipeResult(raw, (r) => r.id)` is a `Result<string, never>`, not a bare `string`, and `pipeResult(5)` is `Ok<5>`.
+
+Each step's parameter type is checked against the previous step's declared return type, so feeding a step the wrong shape is a compile error at that step. Both functions support up to 8 steps. A `pipeResult` step can't return an `Option` (or a `pipeOption` step a `Result`); convert at the boundary with [`someOr`](#option)/[`toOption`](#functions-on-result) between two separate calls.
 
 ---
 
