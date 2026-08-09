@@ -1,6 +1,6 @@
 {
   "name": "ts-sumtype",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Tagged unions with one primitive: Sum, matchTag, Result, Option.",
   "license": "MIT",
   "author": "wagnerkaue <wagnerkauemds@gmail.com>",
