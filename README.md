@@ -11,7 +11,7 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Unit](#unit) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [matchTag](#matchtag) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipeResult / pipeOption](#piperesult--pipeoption) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [matchTag](#matchtag) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipeResult / pipeOption](#piperesult--pipeoption) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
 import { variant, matchTag, type Sum, type Unit } from "ts-sumtype";
@@ -203,6 +203,56 @@ export const unit: Unit = null;
 ```
 
 `Sum<{ bitcoin: null }>` and `Sum<{ bitcoin: Unit }>` are the same type, `null` and `unit` the same value, so either spelling is accepted anywhere the other is; `null`/`variant({ bitcoin: null })` still work everywhere, `Unit`/`unit` exist for when spelling out the intent is worth the extra word, which is the spelling the rest of this README uses from here on.
+
+---
+
+## Frozen
+
+`Sum` marks the tag `readonly` and leaves the payload as written, so both `term.seq.left = x` and `term.seq = y` type check. `Frozen<T>` marks every property `readonly` and every collection immutable, all the way down. Wrap the sum type with it:
+
+```typescript
+import { type Frozen, type Sum, type Unit } from "ts-sumtype";
+
+type Term = Frozen<Sum<{
+  id: Unit;
+  seq: { left: Term; right: Term };
+  kids: Term[];
+  table: Record<string, Term>;
+}>>;
+
+declare const term: Term;
+if (term.tag === "seq") {
+  term.seq.left = term;                   // Cannot assign to 'left' because it is a read-only property
+  term.seq = { left: term, right: term }; // Cannot assign to 'seq' because it is a read-only property
+}
+if (term.tag === "kids") {
+  term.kids.push(term);                   // Property 'push' does not exist on type 'FrozenArray<Term>'
+}
+if (term.tag === "table") {
+  term.table["k"] = term;                 // Index signature only permits reading
+}
+```
+
+Writing `readonly` by hand covers a payload's own fields, one at a time. `Frozen` also covers the slot holding the payload, and everything inside a container like `table`. It applies to a sum type you already have, so `Frozen<Option<Row>>` and `Frozen<Result<Row, GatewayErr>>` work the same way.
+
+Construction is unchanged, since TypeScript ignores `readonly` when comparing object types: `variant({ seq: { left, right } })` still builds a `Term`. Arrays are the exception it does check, and the one thing to plan for: `kids` is a `readonly Term[]`, so a function declaring `Term[]` needs `readonly Term[]` or a copy at the call site. Primitives, functions, `Date`, `RegExp`, `Error`, and `Promise` pass through whole; tuples keep their positions; `Map` and `Set` become `ReadonlyMap` and `ReadonlySet`.
+
+A case referring back to the type being declared is fine, the way `seq` and `kids` do above. A recursive type declared elsewhere is not: `Frozen<Json>` freezes the outer layer and leaves every `Json` inside it mutable, and a function recursing over such a payload stops type checking partway down. Declare those frozen instead, either with the markers written out:
+
+```typescript
+type Json = null | boolean | number | string | readonly Json[] | { readonly [k: string]: Json };
+```
+
+or as a `Sum` of their cases, where the self-reference sits inside the case literal:
+
+```typescript
+type Json = Frozen<Sum<{
+  nul: Unit; bool: boolean; num: number; str: string;
+  arr: Json[]; obj: Record<string, Json>;
+}>>;
+```
+
+`readonly` is erased at compile time. `Frozen` adds no `Object.freeze` and no copying, and it governs direct writes only.
 
 ---
 
@@ -653,6 +703,7 @@ This is the same representation this README argued against building new code aro
 - **The payload key is named after the tag, and always present.** `{ tag: "cash" }` alone does not satisfy `Sum<{ cash: Unit }>`, write `variant({ cash: unit })` or `{ tag: "cash", cash: null }`.
 - **`"tag"` is a reserved case name.** Its payload key would collide with the discriminant, so `Sum<{ tag: T }>` intersects the discriminant with `T` on the same field; for most `T` that leaves `tag` uninhabitable. Pick any other case name.
 - **Variance is covariant.** `Result<Receipt, never>` is assignable to `Result<Receipt, GatewayErr>`; the reverse (narrowing) is a type error.
+- **`Frozen` reaches one unrolling of a recursive type.** `Frozen<Sum<{ ... }>>` at a declaration is frozen all the way down; `Frozen<SomeRecursiveTypeDeclaredElsewhere>` leaves that type's inner occurrences mutable, see [Frozen](#frozen).
 - **Payloads must be JSON-safe** to survive a `JSON.stringify` / `JSON.parse` round-trip: functions, symbols, and `bigint` don't survive it, and neither does `undefined`, which is silently dropped from whatever key holds it. That last one is why empty payloads are typed `Unit`/`null` rather than `undefined`, see [Unit](#unit).
 - **A `const` whose initializer is narrower than its declared type** can confuse overload resolution at a generic call site:
 

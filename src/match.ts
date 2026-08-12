@@ -15,12 +15,12 @@ export type NotFnBuiltin =
 /** Anything `matchTag` treats as a value arm instead of calling it. */
 export type NotFn = NotFnPrimitive | NotFnBuiltin | { [key: string]: unknown } | readonly unknown[];
 
-/** One arm per tag of `V` — either a function receiving that tag's payload, or a plain value. */
+/** One arm per tag of `V`: either a function receiving that tag's payload, or a plain value. */
 export type CasesMixed<V extends { tag: string }> = {
   [K in V["tag"]]: ((payload: HandlerPayload<V, K>) => unknown) | NotFn;
 };
 
-/** The members of `V` whose tags aren't in `K` — what a fallback arm receives. */
+/** The members of `V` whose tags aren't in `K`: what a fallback arm receives. */
 export type Rest<V extends { tag: string }, K extends string> =
   Extract<V, { tag: Exclude<V["tag"], K> }>;
 

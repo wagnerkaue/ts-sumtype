@@ -9,7 +9,45 @@ export type Sum<Cases extends Record<string, unknown>> = {
   [K in keyof Cases]: { readonly tag: K } & Pick<Cases, K>;
 }[keyof Cases];
 
-/** Rejects `Shape` unless it has exactly one key — the constraint `variant()`/`tagged()` build against. */
+/** Values with no properties to freeze. */
+type Primitive = string | number | boolean | bigint | symbol | null | undefined;
+
+/** Built-ins `Frozen` passes through whole instead of mapping member by member. */
+type Opaque = Date | RegExp | Error | Promise<unknown>;
+
+/** Holds the element type behind an interface, so a recursive payload has somewhere to close its cycle. */
+interface FrozenArray<Element> extends ReadonlyArray<Frozen<Element>> {}
+
+/**
+ * Marks every property `readonly` and every collection immutable, all the way down.
+ * Wrap a sum type with it, `Frozen<Sum<{ ... }>>`, and each payload is frozen along with
+ * the slot holding it. A sum type that already exists takes it too: `Frozen<Option<Row>>`.
+ *
+ * A recursive case works when its self-reference sits inside the case literal, which is
+ * where `Frozen<Sum<{ seq: Term[]; rest: Term | null }>>` puts it. A recursive type
+ * declared elsewhere behaves differently: `Frozen<Json>` rewrites the outermost layer and
+ * then arrives back at `Json`, still mutable, so the result is not a fixed point and a
+ * recursive function over it stops type checking. Declare those frozen instead, either
+ * with the `readonly` markers written out or as a `Sum` whose cases are an object literal.
+ *
+ * Arrays become `readonly`, which TypeScript does check on assignment: a frozen payload
+ * cannot be passed to a parameter typed `T[]`.
+ */
+export type Frozen<T> = T extends Primitive | Opaque
+  ? T
+  : T extends (...args: never[]) => unknown
+    ? T
+    : T extends ReadonlyMap<infer K, infer V>
+      ? ReadonlyMap<Frozen<K>, Frozen<V>>
+      : T extends ReadonlySet<infer E>
+        ? ReadonlySet<Frozen<E>>
+        : T extends readonly unknown[]
+          ? number extends T["length"]
+            ? FrozenArray<T[number]>
+            : { readonly [K in keyof T]: Frozen<T[K]> }
+          : { readonly [K in keyof T]: Frozen<T[K]> };
+
+/** Rejects `Shape` unless it has exactly one key: the constraint `variant()`/`tagged()` build against. */
 type SingleKeyed<Shape extends Record<string, unknown>, K = keyof Shape> =
   K extends keyof Shape ? ([Exclude<keyof Shape, K>] extends [never] ? Shape : never) : never;
 

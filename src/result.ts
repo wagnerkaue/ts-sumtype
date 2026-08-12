@@ -3,7 +3,7 @@ import { some, none, type Option } from "./option";
 
 /** The success case of a `Result`. */
 export type Ok<T> = Sum<{ ok: T }>;
-/** The failure case of a `Result` — its payload is itself a tagged variant. */
+/** The failure case of a `Result`; its payload is itself a tagged variant. */
 export type Err<E> = Sum<{ error: E }>;
 /** A value that's either a success or an error. */
 export type Result<T, E> = Ok<T> | Err<E>;
@@ -23,7 +23,7 @@ export function err<E>(payload: E): Err<E> {
   return variant({ error: payload });
 }
 
-/** Builds an `Err` whose payload is itself a `Sum` case — `errVariant({ tag: payload })`. */
+/** Builds an `Err` whose payload is itself a `Sum` case: `errVariant({ tag: payload })`. */
 export const errVariant = tagged("error");
 
 /** Type guard: true when `r` is the error case, narrowing to `Err<E>`. */
@@ -63,7 +63,7 @@ export function allErrors<R extends readonly Result<unknown, unknown>[]>(
   return ok(values as ValuesOf<R>);
 }
 
-/** `Ok → Some` (unchanged value), `Err → None` — drops the error. */
+/** `Ok → Some` (unchanged value), `Err → None`, dropping the error. */
 export function toOption<T, E>(r: Result<T, E>): Option<T> {
   return isVariant(r, "ok") ? some(r.ok) : none();
 }

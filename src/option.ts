@@ -13,7 +13,7 @@ export function some<T>(value: T): Option<T> {
   return variant({ some: value });
 }
 
-/** Builds the absent case. Returns a fresh object each call — compare by tag, not `===`. */
+/** Builds the absent case. Returns a fresh object each call, so compare by tag, not `===`. */
 export function none<T = never>(): Option<T> {
   return variant({ none: unit });
 }

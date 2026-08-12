@@ -27,11 +27,11 @@ function runPipe(value: unknown, fns: readonly AnyFn[], successTag: string, halt
 
 // ── Result ──
 
-/** The success payload of `S` (a step's return type) — unwraps `Ok`, drops `Err`, passes a non-`Sum` value through as-is. */
+/** The success payload of `S` (a step's return type): unwraps `Ok`, drops `Err`, passes a non-`Sum` value through as-is. */
 type UnwrapOk<S> = S extends Ok<infer T> ? T : S extends { tag: string } ? never : S;
 /** `Err<E>` for `S`, or `never` for `Ok<T>`/a plain non-`Sum` value. */
 type HaltErr<S> = S extends Ok<unknown> ? never : S extends { tag: string } ? S : never;
-/** `S` unchanged if it's already `Ok`/`Err`, otherwise `Ok<S>` — the pipe's own result is always a `Result`, even when the last step (or a zero-step seed) is a plain value. */
+/** `S` unchanged if it's already `Ok`/`Err`, otherwise `Ok<S>`; the pipe's own result is always a `Result`, even when the last step (or a zero-step seed) is a plain value. */
 type EnsureOk<S> = S extends Ok<unknown> ? S : S extends Err<unknown> ? S : Ok<S>;
 
 /**
@@ -41,10 +41,10 @@ type EnsureOk<S> = S extends Ok<unknown> ? S : S extends Err<unknown> ? S : Ok<S
  *
  * Typed for up to 8 steps via individually-checked overloads. Each step after the first is
  * checked against the previous step's *declared* return type, so a mismatched step is a compile
- * error at that step. The seed's own expected type is inferred from the first step instead (not
- * unwrapped via a conditional type), which is what lets this stay sound even when `value`'s type
- * is a bare, unconstrained generic — the previous conditional-type-based design couldn't resolve
- * `Unwrap<V>` for a generic `V`, and rejected perfectly valid generic callers.
+ * error at that step. The seed's own expected type is inferred from the first step rather than
+ * unwrapped by a conditional type, which is what keeps this sound when `value`'s type is a bare,
+ * unconstrained generic: `Unwrap<V>` has no resolution for a generic `V`, so unwrapping the seed
+ * that way rejects generic callers.
  *
  * See [`pipeOption`](#pipeoption) for the `Option` equivalent.
  */
@@ -197,11 +197,11 @@ export function pipeResult(value: unknown, ...fns: readonly AnyFn[]): unknown {
 
 // ── Option ──
 
-/** The success payload of `S` (a step's return type) — unwraps `Some`, drops `None`, passes a non-`Sum` value through as-is. */
+/** The success payload of `S` (a step's return type): unwraps `Some`, drops `None`, passes a non-`Sum` value through as-is. */
 type UnwrapSome<S> = S extends Some<infer T> ? T : S extends { tag: string } ? never : S;
 /** `None` for `S`, or `never` for `Some<T>`/a plain non-`Sum` value. */
 type HaltNone<S> = S extends Some<unknown> ? never : S extends { tag: string } ? S : never;
-/** `S` unchanged if it's already `Some`/`None`, otherwise `Some<S>` — the pipe's own result is always an `Option`, even when the last step (or a zero-step seed) is a plain value. */
+/** `S` unchanged if it's already `Some`/`None`, otherwise `Some<S>`; the pipe's own result is always an `Option`, even when the last step (or a zero-step seed) is a plain value. */
 type EnsureSome<S> = S extends Some<unknown> ? S : S extends None ? S : Some<S>;
 
 /**
@@ -211,10 +211,10 @@ type EnsureSome<S> = S extends Some<unknown> ? S : S extends None ? S : Some<S>;
  *
  * Typed for up to 8 steps via individually-checked overloads. Each step after the first is
  * checked against the previous step's *declared* return type, so a mismatched step is a compile
- * error at that step. The seed's own expected type is inferred from the first step instead (not
- * unwrapped via a conditional type), which is what lets this stay sound even when `value`'s type
- * is a bare, unconstrained generic — the previous conditional-type-based design couldn't resolve
- * `Unwrap<V>` for a generic `V`, and rejected perfectly valid generic callers.
+ * error at that step. The seed's own expected type is inferred from the first step rather than
+ * unwrapped by a conditional type, which is what keeps this sound when `value`'s type is a bare,
+ * unconstrained generic: `Unwrap<V>` has no resolution for a generic `V`, so unwrapping the seed
+ * that way rejects generic callers.
  *
  * See [`pipeResult`](#piperesult) for the `Result` equivalent.
  */

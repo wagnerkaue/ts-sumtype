@@ -1,5 +1,5 @@
 import {
-  variant, tagged, type Sum, type NestVariant, type PayloadOf,
+  variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   matchTag,
   ok, err, errVariant, isOk, isErr, fromThrowable, allErrors, toOption,
   type Ok, type Err, type Result,
@@ -88,8 +88,8 @@ const fn1Probe: Option<string> = fn1;
 const fn2 = fromNullable("x", "was null" as const);
 const fn2Probe: Result<string, "was null"> = fn2;
 
-// `allResults`/`allOptions` replace the old single `all`: each is a distinct
-// function, so the empty-array case is unambiguous instead of guessing a tag.
+// `allResults` and `allOptions` are separate functions, so an empty array still names
+// which sum type it collects into instead of leaving the tag to be guessed.
 const all1 = allResults([ok(1), ok("a")]);
 const all1Probe: Result<[number, string], never> = all1;
 
@@ -113,9 +113,9 @@ declare const action: Action;
 const m1 = matchTag(action, { go: (p) => p.n, stop: -1 });
 const m1Probe: number = m1;
 
-// ── T9: multi-step Result/Option composition via early-return (chain was replaced by
-// pipeResult/pipeOption, see T12; this is the same "return type is the union of every branch's
-// outcome" shape either covers, one sum type at a time)
+// ── T9: multi-step Result/Option composition via early-return. The return type is the union of
+// every branch's outcome, one sum type at a time; T12 covers that same shape through
+// pipeResult/pipeOption.
 type NotFoundErr = Sum<{ not_found: { id: number } }>;
 declare function parseId(s: string): Result<number, ParseErr>;
 declare function findUser(id: number): Result<{ name: string }, NotFoundErr>;
@@ -159,12 +159,12 @@ const statusVariant = fromEnum(status);
 const statusProbe: Sum<{ active: null }> | Sum<{ pending: null }> | Sum<{ inactive: null }> = statusVariant;
 if (statusVariant.tag === "active") {
   const activePayload: null = statusVariant.active;
-  // @ts-expect-error regression guard: fromEnum must distribute over its argument's
-  // union, so narrowing to "active" rules out the other cases' keys entirely
+  // @ts-expect-error fromEnum distributes over its argument's union, so narrowing to
+  // "active" rules out the other cases' keys entirely
   const crossCase = statusVariant.pending;
 }
 
-// ── T11: recursive self-reference -- regression guard for the whole point of this redesign
+// ── T11: recursive self-reference
 type Expr = Sum<{ num: number; paren: Expr }>;
 declare const expr: Expr;
 if (expr.tag === "paren") {
@@ -186,8 +186,8 @@ type Joined = Sum<{ a: number }> | Sum<{ b: string }>;
 const fannedAsJoined: Joined = variant({ a: 1 }) as Fanned;
 const joinedAsFanned: Fanned = variant({ b: "x" }) as Joined;
 
-// ── T12: pipeResult / pipeOption -- the two Result steps from T9's chain, threaded through
-// pipeResult instead of early-return, plus a raw seed and a separate pipeOption chain
+// ── T12: pipeResult / pipeOption -- the two Result steps from T9, threaded through pipeResult
+// instead of early-return, plus a raw seed and a separate pipeOption chain
 declare function chargeGateway(id: number, cents: number): Result<{ receiptId: string }, ParseErr>;
 const p1 = pipeResult(parseId("42"), (id) => findUser(id));
 const p1Probe: Result<{ name: string }, ParseErr | NotFoundErr> = p1;
@@ -229,10 +229,10 @@ pipeOption(
   (id: string) => findUserOption(id),
 );
 
-// regression guard: pipeOption's seed used to be typed via a conditional unwrap of its own type
-// (`Unwrap<V>`), which TypeScript can't resolve for a bare unconstrained generic -- rejecting this
-// perfectly valid generic caller with "B could be instantiated with an arbitrary type ...". The
-// seed's expected type is now inferred from the first step instead, which stays sound for any V.
+// pipeOption's seed takes its expected type from the first step rather than from a conditional
+// unwrap of its own type (`Unwrap<V>`), which TypeScript can't resolve for a bare unconstrained
+// generic. That is what lets the generic caller below type check instead of failing with "B could
+// be instantiated with an arbitrary type ...".
 type Isomorphism<A, B, K> = {
   canon: (a: A) => Option<K>;
   do: (a: A) => Option<B>;
@@ -245,3 +245,75 @@ function inverse<A, B, K>(i: Isomorphism<A, B, K>): Isomorphism<B, A, K> {
     undo: i.do,
   };
 }
+
+// ── T13: Frozen -- payloads and the slots holding them, immutable with nothing annotated
+type Term = Frozen<Sum<{
+  id: Unit;
+  seq: { left: Term; right: Term };
+  kids: Term[];
+  table: Record<string, Term>;
+  span: [number, number];
+  render: (t: Term) => string;
+  stamp: Date;
+}>>;
+declare const term: Term;
+
+if (term.tag === "seq") {
+  // @ts-expect-error the payload's own fields are readonly
+  term.seq.left = term;
+  // @ts-expect-error and so is the slot holding the payload
+  term.seq = { left: term, right: term };
+}
+if (term.tag === "kids") {
+  // @ts-expect-error arrays become readonly arrays
+  term.kids.push(term);
+}
+if (term.tag === "table") {
+  // @ts-expect-error a container reached through a payload is frozen at every depth
+  term.table["k"] = term;
+}
+
+// tuples keep their positions, call signatures stay callable, built-ins pass through whole
+if (term.tag === "span") {
+  const spanStart: number = term.span[0];
+  const spanEnd: number = term.span[1];
+  const spanArity: 2 = term.span.length;
+}
+if (term.tag === "render") {
+  const rendered: string = term.render(term);
+}
+if (term.tag === "stamp") {
+  const stamped: Date = term.stamp;
+}
+
+// construction reads the same: a mutable literal is assignable to a frozen payload
+const builtTerm: Term = variant({ seq: { left: variant({ id: null }), right: variant({ id: null }) } });
+
+// `Frozen<Term>` is `Term`, so a recursive traversal over a frozen ADT still type checks
+function countTerms(t: Term): number {
+  return matchTag(t, {
+    id: 1,
+    seq: (s) => countTerms(s.left) + countTerms(s.right),
+    kids: (xs) => xs.reduce((n, x) => n + countTerms(x), 0),
+    table: (tbl) => Object.values(tbl).reduce((n, x) => n + countTerms(x), 0),
+    span: 1,
+    render: 1,
+    stamp: 1,
+  });
+}
+
+// Frozen applies to a sum type that already exists, not only to one being declared here
+declare const frozenOption: Frozen<Option<{ rows: number[] }>>;
+if (frozenOption.tag === "some") {
+  const rowCount: number = frozenOption.some.rows.length;
+  // @ts-expect-error the payload of an existing Option is frozen through it
+  frozenOption.some.rows.push(1);
+}
+
+// the two nesting orders describe the same type
+type OuterFrozen = Frozen<Sum<{ go: { n: number }; stop: Unit }>>;
+type InnerFrozen = Sum<Frozen<{ go: { n: number }; stop: Unit }>>;
+declare const outerFrozen: OuterFrozen;
+declare const innerFrozen: InnerFrozen;
+const outerAsInner: InnerFrozen = outerFrozen;
+const innerAsOuter: OuterFrozen = innerFrozen;
