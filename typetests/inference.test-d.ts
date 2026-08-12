@@ -5,7 +5,7 @@ import {
   type Ok, type Err, type Result,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
-  unwrap, unwrapOr, expect, fromNullable, all,
+  unwrap, unwrapOr, expect, fromNullable, allResults, allOptions,
   fromFlat, fromKeyed, fromEnum, type Unflattened, type Rekeyed,
   pipeResult, pipeOption,
 } from "../src/index";
@@ -88,13 +88,19 @@ const fn1Probe: Option<string> = fn1;
 const fn2 = fromNullable("x", "was null" as const);
 const fn2Probe: Result<string, "was null"> = fn2;
 
-// `all` has one overload per sum type now — Ok<T> and Some<T> no longer share
-// a tag, so a single call can't feed both a Result and an Option annotation.
-const all1 = all([ok(1), ok("a")]);
+// `allResults`/`allOptions` replace the old single `all`: each is a distinct
+// function, so the empty-array case is unambiguous instead of guessing a tag.
+const all1 = allResults([ok(1), ok("a")]);
 const all1Probe: Result<[number, string], never> = all1;
 
-const all2 = all([some(1), some("a")]);
+const all2 = allOptions([some(1), some("a")]);
 const all2Probe: Option<[number, string]> = all2;
+
+const all3 = allResults([]);
+const all3Probe: Result<[], never> = all3;
+
+const all4 = allOptions([]);
+const all4Probe: Option<[]> = all4;
 
 // ── T7: tagged() nesting
 const nested = tagged("a", "b")({ c: { x: 1 } });

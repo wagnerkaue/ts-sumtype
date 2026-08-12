@@ -455,7 +455,7 @@ err(caught); // { tag: "error", error: caught }: whatever caught is, stored as-i
 | `allErrors(results)` | one `Ok` of every value, or an `Err` collecting **every** error |
 | `toOption(r)` | `Ok → Some`, `Err → None` |
 
-`allErrors` gathers all failures. When you want to stop at the first one instead, use [`all`](#collecting-results).
+`allErrors` gathers all failures. When you want to stop at the first one instead, use [`allResults`](#collecting-results).
 
 ---
 
@@ -511,23 +511,21 @@ fromNullable(raw.savedMethod, "no method"); // Result<PaymentMethod, "no method"
 
 ### Collecting results
 
-`all` walks an array of `Result`s or an array of `Option`s, returning the tuple of values or short-circuiting on the first `Err`/`None` found. `Ok` and `Some` are separate cases now, so `all` can't take a genuinely mixed array the way it could when they shared one; it dispatches on which one the array is, and echoes that case back:
+`allResults` walks an array of `Result`s, and `allOptions` walks an array of `Option`s, each returning the tuple of values or short-circuiting on the first `Err`/`None` found:
 
 ```typescript
-import { all } from "ts-sumtype";
+import { allResults, allOptions } from "ts-sumtype";
 
-all([authorizeMethod(a), authorizeMethod(b)]);      // Ok<[PaymentMethod, PaymentMethod]>
-all([authorizeMethod(a), authorizeMethod(bad)]);    // Err, stops at the first declined method
+allResults([authorizeMethod(a), authorizeMethod(b)]);      // Ok<[PaymentMethod, PaymentMethod]>
+allResults([authorizeMethod(a), authorizeMethod(bad)]);    // Err, stops at the first declined method
 
-all([customerA.savedMethod, customerB.savedMethod]); // Some<[PaymentMethod, PaymentMethod]>
-all([customerA.savedMethod, noMethod.savedMethod]);  // None, stops at the first absent method
+allOptions([customerA.savedMethod, customerB.savedMethod]); // Some<[PaymentMethod, PaymentMethod]>
+allOptions([customerA.savedMethod, noMethod.savedMethod]);  // None, stops at the first absent method
 ```
-
-An empty array defaults to `Ok<[]>`; annotate it as an `Option` array (`[] as Option<never>[]`) if you need `Some<[]>` instead.
 
 ### pipeResult / pipeOption
 
-`all` collects a fixed array of independent `Result`s/`Option`s. The other common shape is a *sequence*: each step depends on the previous one's success value, and any step failing should stop the rest from running. `pipeResult(value, ...fns)` threads `value` through each function left to right, feeding each one the previous step's unwrapped `ok`; a step returning `error` halts the pipe immediately, returned as-is, and the remaining functions never run:
+`allResults`/`allOptions` collect a fixed array of independent `Result`s/`Option`s. The other common shape is a *sequence*: each step depends on the previous one's success value, and any step failing should stop the rest from running. `pipeResult(value, ...fns)` threads `value` through each function left to right, feeding each one the previous step's unwrapped `ok`; a step returning `error` halts the pipe immediately, returned as-is, and the remaining functions never run:
 
 ```typescript
 import { pipeResult } from "ts-sumtype";

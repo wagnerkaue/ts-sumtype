@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ok, some, err, errVariant, none, unwrap, unwrapOr, expect as expectFn, fromNullable, all, type Result } from "../src/index";
+import { ok, some, err, errVariant, none, unwrap, unwrapOr, expect as expectFn, fromNullable, allResults, allOptions, type Result } from "../src/index";
 
 describe("unwrap", () => {
   it("unwrap", () => {
@@ -30,18 +30,22 @@ describe("unwrap", () => {
     expect(fromNullable(null, "err")).toEqual({ tag: "error", error: "err" });
   });
 
-  it("all over Results short-circuits on first error", () => {
-    expect(all([ok(1), ok(2)])).toEqual({ tag: "ok", ok: [1, 2] });
-    const r = all([ok(1), errVariant({ bad: null })]);
+  it("allResults short-circuits on first error", () => {
+    expect(allResults([ok(1), ok(2)])).toEqual({ tag: "ok", ok: [1, 2] });
+    const r = allResults([ok(1), errVariant({ bad: null })]);
     expect(r.tag).toBe("error");
   });
 
-  it("all([]) returns ok with empty array", () => {
-    expect(all([])).toEqual({ tag: "ok", ok: [] });
+  it("allResults([]) returns Ok<[]>", () => {
+    expect(allResults([])).toEqual({ tag: "ok", ok: [] });
   });
 
-  it("all over an Option array short-circuits on none", () => {
-    expect(all([some(1), some(2)])).toEqual({ tag: "some", some: [1, 2] });
-    expect(all([some(1), none()])).toEqual({ tag: "none", none: null });
+  it("allOptions short-circuits on first none", () => {
+    expect(allOptions([some(1), some(2)])).toEqual({ tag: "some", some: [1, 2] });
+    expect(allOptions([some(1), none()])).toEqual({ tag: "none", none: null });
+  });
+
+  it("allOptions([]) returns Some<[]>", () => {
+    expect(allOptions([])).toEqual({ tag: "some", some: [] });
   });
 });

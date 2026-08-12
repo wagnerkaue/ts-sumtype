@@ -32,20 +32,25 @@ type ValuesOf<R extends readonly unknown[]> = {
 };
 
 /** Ok-of-a-tuple over `Result`s: all `Ok`, or the first `Err` found. */
-export function all<R extends readonly Result<unknown, unknown>[]>(
+export function allResults<R extends readonly Result<unknown, unknown>[]>(
   items: [...R],
-): Ok<ValuesOf<R>> | HaltOf<R[number]>;
-/** Some-of-a-tuple over `Option`s: all `Some`, or the first `None` found. */
-export function all<R extends readonly Option<unknown>[]>(
-  items: [...R],
-): Some<ValuesOf<R>> | HaltOf<R[number]>;
-export function all(items: readonly { tag: string }[]): unknown {
+): Ok<ValuesOf<R>> | HaltOf<R[number]> {
   const values: unknown[] = [];
   for (const item of items as any[]) {
     if (item.tag === "ok") { values.push(item.ok); continue; }
+    return item;
+  }
+  return { tag: "ok", ok: values } as Ok<ValuesOf<R>>;
+}
+
+/** Some-of-a-tuple over `Option`s: all `Some`, or the first `None` found. */
+export function allOptions<R extends readonly Option<unknown>[]>(
+  items: [...R],
+): Some<ValuesOf<R>> | HaltOf<R[number]> {
+  const values: unknown[] = [];
+  for (const item of items as any[]) {
     if (item.tag === "some") { values.push(item.some); continue; }
     return item;
   }
-  const tag = items.length > 0 && (items[0] as any).tag === "some" ? "some" : "ok";
-  return { tag, [tag]: values };
+  return { tag: "some", some: values } as Some<ValuesOf<R>>;
 }
