@@ -9,7 +9,7 @@ export type None = Sum<{ none: Unit }>;
 export type Option<T> = Some<T> | None;
 
 /** Builds the present case carrying `value`. */
-export function some<T>(value: T): Option<T> {
+export function some<const T>(value: T): Option<T> {
   return variant({ some: value });
 }
 
@@ -29,6 +29,6 @@ export function isNone<T>(o: Option<T>): o is None {
 }
 
 /** `Some → Ok` (unchanged value), `None → Err(error)`. */
-export function someOr<T, E>(o: Option<T>, error: E): Result<T, E> {
+export function someOr<T, const E>(o: Option<T>, error: E): Result<T, E> {
   return isVariant(o, "some") ? ok(o.some) : err(error);
 }

@@ -8,7 +8,7 @@ export type Unflattened<K extends string, T extends Record<K, string>> = T exten
 /** Returns a converter from a flat discriminated union (keyed by `key`) to a `Sum` case. */
 export function fromFlat<K extends string>(
   key: K,
-): <T extends Record<K, string>>(value: T) => Unflattened<K, T> {
+): <const T extends Record<K, string>>(value: T) => Unflattened<K, T> {
   return (value) => {
     const { [key]: tag, ...payload } = value as Record<string, unknown>;
     return { tag, [tag as string]: payload } as Unflattened<K, typeof value>;
@@ -26,7 +26,7 @@ export type Rekeyed<
 export function fromKeyed<K extends string, P extends string>(
   tagKey: K,
   payloadKey: P,
-): <T extends Record<K, string> & Record<P, unknown>>(value: T) => Rekeyed<K, P, T> {
+): <const T extends Record<K, string> & Record<P, unknown>>(value: T) => Rekeyed<K, P, T> {
   return (value) => {
     const obj = value as Record<string, unknown>;
     const tag = obj[tagKey] as string;

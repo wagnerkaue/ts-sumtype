@@ -52,7 +52,7 @@ type SingleKeyed<Shape extends Record<string, unknown>, K = keyof Shape> =
   K extends keyof Shape ? ([Exclude<keyof Shape, K>] extends [never] ? Shape : never) : never;
 
 /** Builds the one-case `Sum` for a single-key object: `variant({ paren: expr })`. */
-export function variant<Shape extends Record<string, unknown>>(
+export function variant<const Shape extends Record<string, unknown>>(
   shape: Shape & SingleKeyed<Shape>,
 ): Sum<Shape> {
   const tag = Object.keys(shape)[0] as keyof Shape;
@@ -83,7 +83,7 @@ export type NestVariant<Tags extends readonly string[], Inner> =
 
 /** Builds a constructor that nests every case it makes under the given outer tags, in order. */
 export function tagged<const Prefixes extends readonly string[]>(...prefixes: Prefixes) {
-  function build<Shape extends Record<string, unknown>>(
+  function build<const Shape extends Record<string, unknown>>(
     shape: Shape & SingleKeyed<Shape>,
   ): NestVariant<Prefixes, Sum<Shape>> {
     const tag = Object.keys(shape)[0];
@@ -98,7 +98,7 @@ export function tagged<const Prefixes extends readonly string[]>(...prefixes: Pr
 }
 
 /** Returns a copy of `original` with its payload replaced by `newPayload`; the tag is unchanged. */
-export function withPayload<V extends { tag: string }>(
+export function withPayload<const V extends { tag: string }>(
   original: V,
   newPayload: PayloadOf<V, V["tag"]>,
 ): V {

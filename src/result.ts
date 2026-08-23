@@ -9,7 +9,7 @@ export type Err<E> = Sum<{ error: E }>;
 export type Result<T, E> = Ok<T> | Err<E>;
 
 /** Builds the success case carrying `value`. */
-export function ok<T>(value: T): Ok<T> {
+export function ok<const T>(value: T): Ok<T> {
   return variant({ ok: value });
 }
 
@@ -19,7 +19,7 @@ export function isOk<T, E>(r: Result<T, E>): r is Ok<T> {
 }
 
 /** Builds the failure case carrying `payload` directly. */
-export function err<E>(payload: E): Err<E> {
+export function err<const E>(payload: E): Err<E> {
   return variant({ error: payload });
 }
 
