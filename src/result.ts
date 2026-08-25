@@ -5,8 +5,10 @@ import { some, none, type Option } from "./option";
 export type Ok<T> = Sum<{ ok: T }>;
 /** The failure case of a `Result`; its payload is itself a tagged variant. */
 export type Err<E> = Sum<{ error: E }>;
+/** `Err<E>`, or `never` when `E` is `never`, so an infallible `Result` has no error case at all. */
+export type ErrCase<E> = [E] extends [never] ? never : Err<E>;
 /** A value that's either a success or an error; collapses to `Ok<T>` when `E` is `never`. */
-export type Result<T, E> = Ok<T> | ([E] extends [never] ? never : Err<E>);
+export type Result<T, E> = Ok<T> | ErrCase<E>;
 
 /** The two cases spelled out, without the `never`-collapsing: what a `Result<T, E>` is at runtime regardless of `E`. */
 type AnyResult<T, E> = Ok<T> | Err<E>;
@@ -22,15 +24,15 @@ export function isOk<T, E>(r: Result<T, E>): r is Ok<T> {
 }
 
 /** Builds the failure case carrying `payload` directly. */
-export function err<const E>(payload: E): Err<E> {
-  return variant({ error: payload });
+export function err<const E>(payload: E): ErrCase<E> {
+  return variant({ error: payload }) as ErrCase<E>;
 }
 
 /** Builds an `Err` whose payload is itself a `Sum` case: `errVariant({ tag: payload })`. */
 export const errVariant = tagged("error");
 
 /** Type guard: true when `r` is the error case, narrowing to `Err<E>`. */
-export function isErr<T, E>(r: Result<T, E>): r is [E] extends [never] ? never : Err<E> {
+export function isErr<T, E>(r: Result<T, E>): r is ErrCase<E> {
   return isVariant(r as AnyResult<T, E>, "error");
 }
 
@@ -39,7 +41,7 @@ export function fromThrowable<T, E = unknown>(f: () => T, mapError?: (e: unknown
   try {
     return ok(f());
   } catch (e) {
-    return err(mapError ? mapError(e) : (e as E)) as Result<T, E>;
+    return err(mapError ? mapError(e) : (e as E));
   }
 }
 

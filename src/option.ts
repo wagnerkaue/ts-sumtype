@@ -30,5 +30,5 @@ export function isNone<T>(o: Option<T>): o is None {
 
 /** `Some → Ok` (unchanged value), `None → Err(error)`. */
 export function someOr<T, const E>(o: Option<T>, error: E): Result<T, E> {
-  return (isVariant(o, "some") ? ok(o.some) : err(error)) as Result<T, E>;
+  return isVariant(o, "some") ? ok(o.some) : err(error);
 }

@@ -1,4 +1,4 @@
-import { type Ok, type Err, type Result } from "./result";
+import { type Ok, type Err, type ErrCase, type Result } from "./result";
 import { type Some, type None, type Option } from "./option";
 
 type AnyFn = (arg: any) => any;
@@ -52,13 +52,13 @@ export function pipeResult<V>(value: V): EnsureOk<V>;
 export function pipeResult<In1, F1 extends (arg: In1) => any, E1 = never>(
   value: Result<In1, E1> | In1,
   f1: F1,
-): Err<E1> | EnsureOk<ReturnType<F1>>;
+): ErrCase<E1> | EnsureOk<ReturnType<F1>>;
 export function pipeResult<
   In1,
   F1 extends (arg: In1) => any,
   F2 extends (arg: UnwrapOk<ReturnType<F1>>) => any,
   E1 = never,
->(value: Result<In1, E1> | In1, f1: F1, f2: F2): Err<E1> | HaltErr<ReturnType<F1>> | EnsureOk<ReturnType<F2>>;
+>(value: Result<In1, E1> | In1, f1: F1, f2: F2): ErrCase<E1> | HaltErr<ReturnType<F1>> | EnsureOk<ReturnType<F2>>;
 export function pipeResult<
   In1,
   F1 extends (arg: In1) => any,
@@ -70,7 +70,7 @@ export function pipeResult<
   f1: F1,
   f2: F2,
   f3: F3,
-): Err<E1> | HaltErr<ReturnType<F1>> | HaltErr<ReturnType<F2>> | EnsureOk<ReturnType<F3>>;
+): ErrCase<E1> | HaltErr<ReturnType<F1>> | HaltErr<ReturnType<F2>> | EnsureOk<ReturnType<F3>>;
 export function pipeResult<
   In1,
   F1 extends (arg: In1) => any,
@@ -84,7 +84,7 @@ export function pipeResult<
   f2: F2,
   f3: F3,
   f4: F4,
-): Err<E1> | HaltErr<ReturnType<F1>> | HaltErr<ReturnType<F2>> | HaltErr<ReturnType<F3>> | EnsureOk<ReturnType<F4>>;
+): ErrCase<E1> | HaltErr<ReturnType<F1>> | HaltErr<ReturnType<F2>> | HaltErr<ReturnType<F3>> | EnsureOk<ReturnType<F4>>;
 export function pipeResult<
   In1,
   F1 extends (arg: In1) => any,
@@ -101,7 +101,7 @@ export function pipeResult<
   f4: F4,
   f5: F5,
 ):
-  | Err<E1>
+  | ErrCase<E1>
   | HaltErr<ReturnType<F1>>
   | HaltErr<ReturnType<F2>>
   | HaltErr<ReturnType<F3>>
@@ -125,7 +125,7 @@ export function pipeResult<
   f5: F5,
   f6: F6,
 ):
-  | Err<E1>
+  | ErrCase<E1>
   | HaltErr<ReturnType<F1>>
   | HaltErr<ReturnType<F2>>
   | HaltErr<ReturnType<F3>>
@@ -152,7 +152,7 @@ export function pipeResult<
   f6: F6,
   f7: F7,
 ):
-  | Err<E1>
+  | ErrCase<E1>
   | HaltErr<ReturnType<F1>>
   | HaltErr<ReturnType<F2>>
   | HaltErr<ReturnType<F3>>
@@ -182,7 +182,7 @@ export function pipeResult<
   f7: F7,
   f8: F8,
 ):
-  | Err<E1>
+  | ErrCase<E1>
   | HaltErr<ReturnType<F1>>
   | HaltErr<ReturnType<F2>>
   | HaltErr<ReturnType<F3>>

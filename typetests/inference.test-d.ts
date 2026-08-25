@@ -317,3 +317,72 @@ declare const outerFrozen: OuterFrozen;
 declare const innerFrozen: InnerFrozen;
 const outerAsInner: InnerFrozen = outerFrozen;
 const innerAsOuter: OuterFrozen = innerFrozen;
+
+// ── T14: an infallible Result has no error case -- `Result<T, never>` is just `Ok<T>`,
+// so the success payload is reachable without narrowing first.
+function infallible(x: number): Result<number, never> {
+  return ok(x);
+}
+const infallibleValue: number = infallible(5).ok;
+
+// pipeResult's error slot defaults to `never`, so a pipe that cannot halt reads the same way
+const pipeValue: string = pipeResult({ id: "x" }, (r) => r.id).ok;
+const pipeSeeded: number = pipeResult(ok(5), (v) => v + 1).ok;
+
+// the collapse must not leak into a generic `E`: a function still building a `Result<T, E>`
+// for an unresolved `E` accepts `err(...)` with no assertion at the construction site.
+type Fallible<A, B, E> = (a: A) => Result<B, E>;
+type Pair<X, EX, Y, EY> = { forward: Fallible<X, Y, EX>; backward: Fallible<Y, X, EY> };
+type Leg<A, EA, B, EB, E> = {
+  pair: Pair<A, EA, B, EB>;
+  mapDomErr: (domErr: EA) => E;
+  mapCodErr: (codErr: EB) => E;
+};
+
+const t14Identity: Pair<number, never, number, never> = { forward: ok, backward: ok };
+const t14IdentityValue: number = t14Identity.forward(5).ok;
+
+function t14Compose<X, EX, Y, EY, Z, EZ, EIn, EOut>(
+  xy: Leg<X, EX, Y, EY, EIn>,
+  yz: Leg<Y, EY, Z, EZ, EOut>,
+): Pair<X, EIn, Z, EOut> {
+  return {
+    forward: (x: X) => {
+      const y = xy.pair.forward(x);
+      if (y.tag === "error") return err(xy.mapDomErr(y.error));
+      const z = yz.pair.forward(y.ok);
+      if (z.tag === "error") return err(xy.mapCodErr(z.error));
+      return z;
+    },
+    backward: (z: Z) => {
+      const y = yz.pair.backward(z);
+      if (y.tag === "error") return err(yz.mapCodErr(y.error));
+      const x = xy.pair.backward(y.ok);
+      if (x.tag === "error") return err(yz.mapDomErr(x.error));
+      return x;
+    },
+  };
+}
+
+// and the composed pair narrows on both sides once its errors are concrete
+type DomErr = Sum<{ declined: { reason: string } }>;
+type CodErr = Sum<{ timeout: Unit }>;
+declare const legA: Leg<string, DomErr, number, CodErr, DomErr | CodErr>;
+declare const legB: Leg<number, CodErr, boolean, DomErr, DomErr | CodErr>;
+const t14Composed = t14Compose(legA, legB);
+const t14Forward = t14Composed.forward("hi");
+if (isErr(t14Forward)) {
+  const composedErr: DomErr | CodErr = t14Forward.error;
+} else {
+  const composedOk: boolean = t14Forward.ok;
+}
+
+// a union error payload stays one `Err` holding the union, not one `Err` per member
+declare const combinedErr: Err<DomErr | CodErr>;
+const combinedProbe: Result<string, DomErr | CodErr> = combinedErr;
+
+// forwarding an error onward, still generic, needs no assertion either
+function t14MapOk<T, U, E>(r: Result<T, E>, f: (t: T) => U): Result<U, E> {
+  if (isErr(r)) return r;
+  return ok(f(r.ok));
+}
