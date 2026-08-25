@@ -3,15 +3,15 @@ import { some, none, type Option } from "./option";
 
 /** The success case of a `Result`. */
 export type Ok<T> = Sum<{ ok: T }>;
-/** The failure case of a `Result`; its payload is itself a tagged variant. */
-export type Err<E> = Sum<{ error: E }>;
-/** `Err<E>`, or `never` when `E` is `never`, so an infallible `Result` has no error case at all. */
-export type ErrCase<E> = [E] extends [never] ? never : Err<E>;
+/** The error case's shape, with no `never`-collapsing: the form to cast to and to `infer` against. */
+type ErrShape<E> = Sum<{ error: E }>;
+/** The failure case of a `Result`; its payload is itself a tagged variant. `Err<never>` is `never`, so an infallible `Result` has no error case at all. */
+export type Err<E> = [E] extends [never] ? never : ErrShape<E>;
 /** A value that's either a success or an error; collapses to `Ok<T>` when `E` is `never`. */
-export type Result<T, E> = Ok<T> | ErrCase<E>;
+export type Result<T, E> = Ok<T> | Err<E>;
 
 /** The two cases spelled out, without the `never`-collapsing: what a `Result<T, E>` is at runtime regardless of `E`. */
-type AnyResult<T, E> = Ok<T> | Err<E>;
+type AnyResult<T, E> = Ok<T> | ErrShape<E>;
 
 /** Builds the success case carrying `value`. */
 export function ok<const T>(value: T): Ok<T> {
@@ -24,15 +24,15 @@ export function isOk<T, E>(r: Result<T, E>): r is Ok<T> {
 }
 
 /** Builds the failure case carrying `payload` directly. */
-export function err<const E>(payload: E): ErrCase<E> {
-  return variant({ error: payload }) as ErrCase<E>;
+export function err<const E>(payload: E): Err<E> {
+  return variant({ error: payload }) as Err<E>;
 }
 
 /** Builds an `Err` whose payload is itself a `Sum` case: `errVariant({ tag: payload })`. */
 export const errVariant = tagged("error");
 
 /** Type guard: true when `r` is the error case, narrowing to `Err<E>`. */
-export function isErr<T, E>(r: Result<T, E>): r is ErrCase<E> {
+export function isErr<T, E>(r: Result<T, E>): r is Err<E> {
   return isVariant(r as AnyResult<T, E>, "error");
 }
 
@@ -46,7 +46,7 @@ export function fromThrowable<T, E = unknown>(f: () => T, mapError?: (e: unknown
 }
 
 type ValOf<X> = X extends Ok<infer T> ? T : never;
-type ErrOf<X> = X extends Err<infer E> ? E : never;
+type ErrOf<X> = X extends ErrShape<infer E> ? E : never;
 type ValuesOf<R extends readonly unknown[]> = {
   -readonly [K in keyof R]: ValOf<R[K]>;
 };
