@@ -5,8 +5,11 @@ import { some, none, type Option } from "./option";
 export type Ok<T> = Sum<{ ok: T }>;
 /** The failure case of a `Result`; its payload is itself a tagged variant. */
 export type Err<E> = Sum<{ error: E }>;
-/** A value that's either a success or an error. */
-export type Result<T, E> = Ok<T> | Err<E>;
+/** A value that's either a success or an error; collapses to `Ok<T>` when `E` is `never`. */
+export type Result<T, E> = Ok<T> | ([E] extends [never] ? never : Err<E>);
+
+/** The two cases spelled out, without the `never`-collapsing: what a `Result<T, E>` is at runtime regardless of `E`. */
+type AnyResult<T, E> = Ok<T> | Err<E>;
 
 /** Builds the success case carrying `value`. */
 export function ok<const T>(value: T): Ok<T> {
@@ -15,7 +18,7 @@ export function ok<const T>(value: T): Ok<T> {
 
 /** Type guard: true when `r` is the success case, narrowing to `Ok<T>`. */
 export function isOk<T, E>(r: Result<T, E>): r is Ok<T> {
-  return isVariant(r, "ok");
+  return isVariant(r as AnyResult<T, E>, "ok");
 }
 
 /** Builds the failure case carrying `payload` directly. */
@@ -27,8 +30,8 @@ export function err<const E>(payload: E): Err<E> {
 export const errVariant = tagged("error");
 
 /** Type guard: true when `r` is the error case, narrowing to `Err<E>`. */
-export function isErr<T, E>(r: Result<T, E>): r is Err<E> {
-  return isVariant(r, "error");
+export function isErr<T, E>(r: Result<T, E>): r is [E] extends [never] ? never : Err<E> {
+  return isVariant(r as AnyResult<T, E>, "error");
 }
 
 /** Runs `f`, catching a throw into an `Err` (optionally mapped by `mapError`). */
@@ -36,7 +39,7 @@ export function fromThrowable<T, E = unknown>(f: () => T, mapError?: (e: unknown
   try {
     return ok(f());
   } catch (e) {
-    return err(mapError ? mapError(e) : (e as E));
+    return err(mapError ? mapError(e) : (e as E)) as Result<T, E>;
   }
 }
 
@@ -65,7 +68,8 @@ export function allErrors<R extends readonly Result<unknown, unknown>[]>(
 
 /** `Ok → Some` (unchanged value), `Err → None`, dropping the error. */
 export function toOption<T, E>(r: Result<T, E>): Option<T> {
-  return isVariant(r, "ok") ? some(r.ok) : none();
+  const raw = r as AnyResult<T, E>;
+  return isVariant(raw, "ok") ? some(raw.ok) : none();
 }
 
 /** `null`/`undefined` → `None`, anything else → `Some`. */
