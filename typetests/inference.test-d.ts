@@ -386,3 +386,26 @@ function t14MapOk<T, U, E>(r: Result<T, E>, f: (t: T) => U): Result<U, E> {
   if (isErr(r)) return r;
   return ok(f(r.ok));
 }
+
+// ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
+// array in between. This shape once produced a self-referential type alias error; it must not.
+type Expr15 = Sum<{ atom: Unit; wrap: Expr15; twice: Expr15 }>;
+const built15: Expr15 = variant({ wrap: variant({ atom: null }) });
+function depth15(x: Expr15): number {
+  return matchTag(x, { atom: () => 0, wrap: (i) => 1 + depth15(i), twice: (i) => 2 * depth15(i) });
+}
+declare const e15: Expr15;
+if (e15.tag === "wrap") {
+  const inner15: Expr15 = e15.wrap;
+}
+
+// mutual recursion, both sides direct
+type M15A = Sum<{ leaf: Unit; toB: M15B }>;
+type M15B = Sum<{ toA: M15A }>;
+declare const m15: M15A;
+const m15probe: M15A = m15;
+
+// and direct recursion under `Frozen`
+type FExpr15 = Frozen<Sum<{ atom: Unit; wrap: FExpr15 }>>;
+declare const f15: FExpr15;
+const f15probe: FExpr15 = f15;
