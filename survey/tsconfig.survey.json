@@ -1,0 +1,20 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "ts-sumtype": ["../dist/index.d.ts"],
+      "ts-sumtype/variant": ["../dist/variant.d.ts"],
+      "ts-sumtype/match": ["../dist/match.d.ts"],
+      "ts-sumtype/result": ["../dist/result.d.ts"],
+      "ts-sumtype/option": ["../dist/option.d.ts"],
+      "ts-sumtype/unwrap": ["../dist/unwrap.d.ts"],
+      "ts-sumtype/adapt": ["../dist/adapt.d.ts"],
+      "ts-sumtype/pipe": ["../dist/pipe.d.ts"]
+    },
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": ["cases"]
+}

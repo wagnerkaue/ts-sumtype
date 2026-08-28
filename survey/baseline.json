@@ -1,0 +1,1205 @@
+{
+  "tsVersion": "6.0.3",
+  "cases": {
+    "baseline-match-exhaustive": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "baseline-pipe-chain": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "baseline-result-narrow": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "baseline-frozen-read": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "variant-two-keys": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 92,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2353"
+        ],
+        "chars": 89,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "variant-missing-unit-payload": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 220,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 2,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2741"
+        ],
+        "chars": 83,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "isvariant-typo-tag": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 89,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2367"
+        ],
+        "chars": 115,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "withpayload-wrong-case": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 93,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 49,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "tagged-wrong-depth": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 193,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 2,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 157,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "payload-without-narrowing": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 201,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 1,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 131,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "variant-empty-object": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 69,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2739"
+        ],
+        "chars": 74,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "frozen-array-to-mutable-param": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 215,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [
+          "FrozenArray"
+        ],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 187,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "frozen-recursive-type": {
+      "anomaly": null,
+      "lib": {
+        "count": 3,
+        "codes": [
+          "TS2322",
+          "TS18047",
+          "TS2365"
+        ],
+        "chars": 447,
+        "lines": 4,
+        "depth": 1,
+        "leaks": [
+          "FrozenArray"
+        ],
+        "sumExpansions": 0,
+        "truncated": true,
+        "overload": false
+      },
+      "ctl": {
+        "count": 3,
+        "codes": [
+          "TS2322",
+          "TS18047",
+          "TS2365"
+        ],
+        "chars": 814,
+        "lines": 4,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": true,
+        "overload": false
+      }
+    },
+    "frozen-write": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2540"
+        ],
+        "chars": 60,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2540"
+        ],
+        "chars": 60,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-missing-arm": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 319,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [
+          "CasesMixed"
+        ],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 77,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-extra-arm": {
+      "anomaly": "library accepts the mistake silently",
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2678"
+        ],
+        "chars": 66,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-arm-param-wrong-type": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 301,
+        "lines": 4,
+        "depth": 3,
+        "leaks": [
+          "NotFn"
+        ],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 49,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-inconsistent-returns": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 219,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [
+          "ArmResults"
+        ],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 49,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-fallback-narrow-param": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 1622,
+        "lines": 8,
+        "depth": 7,
+        "leaks": [
+          "NotFn",
+          "ExtractVariant"
+        ],
+        "sumExpansions": 10,
+        "truncated": true,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 294,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-object-value-arm": {
+      "anomaly": "plain TypeScript accepts this; only the library rejects it",
+      "lib": {
+        "count": 2,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 455,
+        "lines": 6,
+        "depth": 2,
+        "leaks": [
+          "NotFn"
+        ],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-untagged-union": {
+      "anomaly": "plain TypeScript accepts this; only the library rejects it",
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 198,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-dead-fallback": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "result-read-without-narrowing": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 167,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 1,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 129,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "result-err-into-infallible": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 394,
+        "lines": 4,
+        "depth": 3,
+        "leaks": [],
+        "sumExpansions": 3,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 46,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "result-ok-const-inference": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 189,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 189,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "fromthrowable-maperror-wrong": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 617,
+        "lines": 6,
+        "depth": 5,
+        "leaks": [],
+        "sumExpansions": 5,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 48,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "allerrors-varargs": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2554"
+        ],
+        "chars": 32,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2554"
+        ],
+        "chars": 32,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "fromnullable-overload-confusion": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 576,
+        "lines": 6,
+        "depth": 5,
+        "leaks": [],
+        "sumExpansions": 4,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 138,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "option-none-untyped": {
+      "anomaly": "plain TypeScript accepts this; only the library rejects it",
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 583,
+        "lines": 6,
+        "depth": 5,
+        "leaks": [],
+        "sumExpansions": 5,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "option-wrong-payload-key": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 102,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 1,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 74,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "unwrap-non-sum": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 50,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 2,
+        "codes": [
+          "TS2571",
+          "TS2345"
+        ],
+        "chars": 149,
+        "lines": 2,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "unwrapor-wrong-fallback": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 74,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 110,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "allresults-destructured": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2488"
+        ],
+        "chars": 161,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 1,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2488"
+        ],
+        "chars": 95,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "fromflat-missing-key": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2353"
+        ],
+        "chars": 109,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2353"
+        ],
+        "chars": 104,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "fromkeyed-swapped-keys": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2353"
+        ],
+        "chars": 134,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2353"
+        ],
+        "chars": 118,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "fromenum-widened-string": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 511,
+        "lines": 5,
+        "depth": 4,
+        "leaks": [],
+        "sumExpansions": 4,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 49,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "pipe-step-mismatch": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 211,
+        "lines": 3,
+        "depth": 2,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 74,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "pipe-too-many-steps": {
+      "anomaly": "plain TypeScript accepts this; only the library rejects it",
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2554"
+        ],
+        "chars": 35,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "pipe-in-generic-fn": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "pipeoption-bare-undefined": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 294,
+        "lines": 4,
+        "depth": 3,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 141,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "recursive-direct-build": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "recursive-payload-unnarrowed": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 173,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 1,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 120,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    }
+  }
+}

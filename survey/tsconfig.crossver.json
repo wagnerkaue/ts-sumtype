@@ -1,0 +1,22 @@
+// Cross-version config: the same cases, but with nothing version-specific in it, so an older
+// or newer tsc can load it. tsconfig.survey.json inherits the repo's root config, which pins
+// options (`ignoreDeprecations`) that older compilers reject and newer ones require.
+//
+// Use it to answer "did a TypeScript upgrade change our diagnostics?":
+//   npx -p typescript@5.0 tsc -p survey/tsconfig.crossver.json --noEmit --pretty false > old.txt
+//   npx tsc -p survey/tsconfig.crossver.json --noEmit --pretty false > new.txt
+//   diff old.txt new.txt
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": { "ts-sumtype": ["../dist/index.d.ts"] }
+  },
+  "include": ["cases"]
+}
