@@ -409,3 +409,24 @@ const m15probe: M15A = m15;
 type FExpr15 = Frozen<Sum<{ atom: Unit; wrap: FExpr15 }>>;
 declare const f15: FExpr15;
 const f15probe: FExpr15 = f15;
+
+// ── T16: a `Sum` case is one object type, not a tag intersected with a payload. The tag and the
+// payload *slot* are both readonly; the payload's own fields are not, and neither is an array
+// payload -- marking those is `Frozen`'s job.
+type Node16 = Sum<{ id: Unit; seq: { left: Node16; right: Node16 }; kids: Node16[] }>;
+declare const n16: Node16;
+
+if (n16.tag === "seq") {
+  n16.seq.left = n16; // a payload's own fields stay writable
+  // @ts-expect-error the slot holding the payload is readonly; build a new case instead
+  n16.seq = { left: n16, right: n16 };
+}
+if (n16.tag === "kids") {
+  n16.kids.push(n16); // an array payload is not frozen by `Sum` alone
+}
+// and a plain array payload still satisfies a mutable-array parameter
+declare function takesNodes(xs: Node16[]): void;
+if (n16.tag === "kids") takesNodes(n16.kids);
+
+// @ts-expect-error the tag is readonly too
+if (n16.tag === "id") n16.tag = "seq";

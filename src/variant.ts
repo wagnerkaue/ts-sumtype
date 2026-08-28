@@ -4,9 +4,25 @@ export type Unit = null;
 /** The one value of `Unit`. */
 export const unit: Unit = null;
 
-/** A union with one case per key of `Cases`: `{ tag: K } & Pick<Cases, K>`, for every `K`, joined with `|`. */
+/**
+ * A union with one case per key of `Cases`: `{ readonly tag: K; readonly [K]: Cases[K] }`, for
+ * every `K`, joined with `|`.
+ *
+ * Each case is a single object type rather than an intersection of a tag and a payload. That is
+ * deliberate: TypeScript prints an intersection structurally, so building the case as
+ * `{ readonly tag: K } & Pick<Cases, K>` put the whole encoding -- and the whole `Cases` object,
+ * self-references included -- into every diagnostic mentioning a `Sum`, once per union member, at
+ * every level of an elaboration chain. As one object type it prints as itself:
+ * `{ readonly tag: "some"; readonly some: string; }`.
+ *
+ * The consequence is that the payload slot is `readonly` along with the tag; a mapped type applies
+ * its modifier to every key, and a mixed pair is exactly what forced the intersection. The payload
+ * is replaced by building a new case -- see `withPayload` -- not by assigning through the slot.
+ * A payload's own fields are untouched: `expr.seq.left = x` still type checks. `Frozen<T>` is what
+ * marks those, and everything below them, immutable too.
+ */
 export type Sum<Cases extends Record<string, unknown>> = {
-  [K in keyof Cases]: { readonly tag: K } & Pick<Cases, K>;
+  [K in keyof Cases]: { readonly [P in K | "tag"]: P extends "tag" ? K : Cases[K] };
 }[keyof Cases];
 
 /** Values with no properties to freeze. */

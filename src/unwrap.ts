@@ -1,29 +1,36 @@
-import { isVariant, type Sum } from "./variant";
+import { type Sum } from "./variant";
 import { type Ok, type Result } from "./result";
 import { type Some, type Option } from "./option";
 
 type ValueOf<R> = R extends Ok<infer T> ? T : R extends Some<infer T> ? T : never;
+
+/** A tagged value read structurally. Narrowing a bare generic `R` yields `Extract<R, ...>`, which
+ *  exposes no payload key, so these functions read `x` through this view instead. */
+type AnyTagged = { tag: string } & Record<string, unknown>;
 type HaltOf<X> = Exclude<X, Ok<unknown> | Some<unknown>>;
 
 /** Returns the value, or throws if `x` is an `Err` or `None`. */
-export function unwrap<R extends Sum<Record<string, unknown>>>(x: R): ValueOf<R> {
-  if (isVariant(x, "ok")) return x.ok as ValueOf<R>;
-  if (isVariant(x, "some")) return x.some as ValueOf<R>;
-  if (isVariant(x, "error")) throw new Error("called unwrap() on an err Result: " + String(x.error));
+export function unwrap<R extends { tag: string }>(x: R): ValueOf<R> {
+  const v = x as AnyTagged;
+  if (v.tag === "ok") return v.ok as ValueOf<R>;
+  if (v.tag === "some") return v.some as ValueOf<R>;
+  if (v.tag === "error") throw new Error("called unwrap() on an err Result: " + String(v.error));
   throw new Error("called unwrap() on a none Option");
 }
 
 /** Returns the value, or `fallback` if `x` is an `Err` or `None`. */
-export function unwrapOr<R extends Sum<Record<string, unknown>>>(x: R, fallback: ValueOf<R>): ValueOf<R> {
-  if (isVariant(x, "ok")) return x.ok as ValueOf<R>;
-  if (isVariant(x, "some")) return x.some as ValueOf<R>;
+export function unwrapOr<R extends { tag: string }>(x: R, fallback: ValueOf<R>): ValueOf<R> {
+  const v = x as AnyTagged;
+  if (v.tag === "ok") return v.ok as ValueOf<R>;
+  if (v.tag === "some") return v.some as ValueOf<R>;
   return fallback;
 }
 
 /** Returns the value, or throws `Error(message)` if `x` is an `Err` or `None`. */
-export function expect<R extends Sum<Record<string, unknown>>>(x: R, message: string): ValueOf<R> {
-  if (isVariant(x, "ok")) return x.ok as ValueOf<R>;
-  if (isVariant(x, "some")) return x.some as ValueOf<R>;
+export function expect<R extends { tag: string }>(x: R, message: string): ValueOf<R> {
+  const v = x as AnyTagged;
+  if (v.tag === "ok") return v.ok as ValueOf<R>;
+  if (v.tag === "some") return v.some as ValueOf<R>;
   throw new Error(message);
 }
 

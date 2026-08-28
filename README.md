@@ -208,7 +208,7 @@ export const unit: Unit = null;
 
 ## Frozen
 
-`Sum` marks the tag `readonly` and leaves the payload as written, so both `term.seq.left = x` and `term.seq = y` type check. `Frozen<T>` marks every property `readonly` and every collection immutable, all the way down. Wrap the sum type with it:
+`Sum` marks the tag and the payload slot `readonly`, so `term.seq = y` does not type check -- a payload is replaced by building a new case, which is what `withPayload(term, next)` does. It stops there: `term.seq.left = x` type checks, and `term.kids.push(x)` does too. `Frozen<T>` marks every property `readonly` and every collection immutable, all the way down. Wrap the sum type with it:
 
 ```typescript
 import { type Frozen, type Sum, type Unit } from "ts-sumtype";
@@ -233,7 +233,7 @@ if (term.tag === "table") {
 }
 ```
 
-Writing `readonly` by hand covers a payload's own fields, one at a time. `Frozen` also covers the slot holding the payload, and everything inside a container like `table`. It applies to a sum type you already have, so `Frozen<Option<Row>>` and `Frozen<Result<Row, GatewayErr>>` work the same way.
+Writing `readonly` by hand covers a payload's own fields, one at a time. `Frozen` covers them all at once, along with everything inside a container like `table` and every collection reached on the way down. It applies to a sum type you already have, so `Frozen<Option<Row>>` and `Frozen<Result<Row, GatewayErr>>` work the same way.
 
 Construction is unchanged, since TypeScript ignores `readonly` when comparing object types: `variant({ seq: { left, right } })` still builds a `Term`. Arrays are the exception it does check, and the one thing to plan for: `kids` is a `readonly Term[]`, so a function declaring `Term[]` needs `readonly Term[]` or a copy at the call site. Primitives, functions, `Date`, `RegExp`, `Error`, and `Promise` pass through whole; tuples keep their positions; `Map` and `Set` become `ReadonlyMap` and `ReadonlySet`.
 
