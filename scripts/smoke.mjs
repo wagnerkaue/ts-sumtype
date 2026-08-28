@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ok, some, errVariant, none, matchTag, variant, tagged, unwrap, allResults, allOptions, fromFlat, fromKeyed, fromEnum, isErr } from "../dist/index.js";
+import { ok, some, errVariant, none, variant, tagged, unwrap, allResults, allOptions, fromFlat, fromKeyed, fromEnum, isErr } from "../dist/index.js";
 
 function pipeline(x) {
   const doubled = x > 0 ? ok(x * 10) : errVariant({ neg: null });
@@ -9,7 +9,7 @@ function pipeline(x) {
 assert.deepEqual(pipeline(2), { tag: "ok", ok: 21 });
 assert.equal(unwrap(pipeline(2)), 21);
 
-assert.equal(matchTag(variant({ idle: null }), { idle: "quiet" }, () => "other"), "quiet");
+assert.equal(variant({ idle: null }).tag, "idle");
 assert.equal(JSON.stringify(ok(1)), '{"tag":"ok","ok":1}');
 assert.equal(JSON.stringify(variant({ idle: null })), '{"tag":"idle","idle":null}'); // payload key survives JSON even when empty
 

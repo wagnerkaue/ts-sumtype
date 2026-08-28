@@ -4,18 +4,21 @@
 // @title   Building and walking a directly recursive sum
 // @intent  A case whose payload IS the recursive type, with no object or array in between -- the shape that historically produced a self-referential type alias error. Regression guard: this must compile clean.
 
-import { type Sum, type Unit, variant, matchTag } from "ts-sumtype";
+import { type Sum, type Unit, variant } from "ts-sumtype";
 
 type Expr = Sum<{ atom: Unit; wrap: Expr; twice: Expr }>;
 
 export const built: Expr = variant({ wrap: variant({ atom: null }) });
 
 export function depth(x: Expr): number {
-  return matchTag(x, {
-    atom: () => 0,
-    wrap: (inner) => 1 + depth(inner),
-    twice: (inner) => 2 * depth(inner),
-  });
+  switch (x.tag) {
+    case "atom":
+      return 0;
+    case "wrap":
+      return 1 + depth(x.wrap);
+    case "twice":
+      return 2 * depth(x.twice);
+  }
 }
 
 export function manual(x: Expr): number {

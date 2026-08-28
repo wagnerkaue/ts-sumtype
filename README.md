@@ -11,10 +11,10 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [matchTag](#matchtag) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipeResult / pipeOption](#piperesult--pipeoption) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipeResult / pipeOption](#piperesult--pipeoption) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
-import { variant, matchTag, type Sum, type Unit } from "ts-sumtype";
+import { variant, type Sum, type Unit } from "ts-sumtype";
 
 type PaymentMethod = Sum<{
   cash: Unit;
@@ -35,16 +35,11 @@ type PaymentMethod = Sum<{
 }>;
 
 function describe(method: PaymentMethod): string {
-  return matchTag(method, {
-    cash:       ()  => "cash",
-    paypal:     (p) => `PayPal (${p.email})`,
-    creditCard: (c) => `card ending ${c.cardNumber.slice(-4)}`,
-    crypto:     (c) => matchTag(c.currency, {
-      bitcoin:  () => `BTC → ${c.address}`,
-      ethereum: () => `ETH → ${c.address}`,
-      solana:   () => `SOL → ${c.address}`,
-    }),
-  });
+  if (method.tag === "crypto") {
+    // nested variants read as the path through them
+    return `${method.crypto.currency.tag} → ${method.crypto.address}`;
+  }
+  return method.tag;
 }
 
 variant({ paypal: { email: "a@b.com" } });
@@ -327,68 +322,6 @@ function isMutedNow(m: Muted): boolean {
 ```
 
 `isVariant` is the general form of the per-type guards you'll meet below, `isOk`, `isSome`, `isNone`, `isErr` are the same guard fixed to one tag. It works on any `{ tag }`-shaped value, including a plain `.tag === "x"` you could write by hand; reach for it when you want the OR form, a reusable predicate (`methods.filter((m) => isVariant(m, "crypto"))`), or simply one consistent spelling.
-
----
-
-## matchTag
-
-A tag check reads one case. `matchTag` handles them all at once, one branch per tag. Each branch is either a **function arm** that receives the payload, or a **value arm** returned as-is:
-
-```typescript
-import { matchTag } from "ts-sumtype";
-
-const describe = (method: PaymentMethod) =>
-  matchTag(method, {
-    cash:       "cash",                          // value arm, returned as-is
-    paypal:     (p) => `PayPal (${p.email})`,     // function arm, receives the payload
-    creditCard: (c) => `card ending ${c.cardNumber.slice(-4)}`,
-    crypto:     (c) => `${c.address}`,
-  });
-```
-
-`cash` carries no payload, so there's nothing for a function arm to receive, a plain value is enough. With every tag handled, the cases object is exhaustive and the compiler enforces it, add a case to `PaymentMethod` and this call stops compiling until you handle it.
-
-### The fallback
-
-Handle only some tags by passing a third argument for the rest. It receives the whole unmatched variant, not a payload:
-
-```typescript
-const refundPlan = (method: PaymentMethod) =>
-  matchTag(
-    method,
-    {
-      cash:       () => "instant",
-      creditCard: () => "instant",
-    },
-    (rest) => `manual review (${rest.tag})`, // rest is paypal | crypto here
-  );
-```
-
-### Composing matches
-
-A payload can itself be a variant, so an arm reads it the same way, one level in, a crypto payment's `currency` is matched inside the `crypto` arm:
-
-```typescript
-const describe = (method: PaymentMethod) =>
-  matchTag(method, {
-    cash:       ()  => "cash",
-    paypal:     (p) => `PayPal (${p.email})`,
-    creditCard: (c) => `card ending ${c.cardNumber.slice(-4)}`,
-    crypto:     (c) =>
-      matchTag(c.currency, {                 // c.currency is Currency, its own tag
-        bitcoin:  () => `BTC → ${c.address}`,
-        ethereum: () => `ETH → ${c.address}`,
-        solana:   () => `SOL → ${c.address}`,
-      }),
-  });
-```
-
-That inner `matchTag(c.currency, ...)` is exactly the read the tag-named keys are for: each hop names where you are.
-
-- Only **own** properties of the cases object dispatch; inherited keys (`toString`, `constructor`, …) fall through to the fallback.
-- An arm set to `undefined` is a value arm: `matchTag` returns `undefined` and the fallback does not run.
-
-When a payload didn't arrive shaped as a `Sum` case at all, see [Adapting existing data](#adapting-existing-data).
 
 ---
 
@@ -722,10 +655,10 @@ The root export re-exports everything. Each module is also individually importab
 
 ```ts
 import { ok } from "ts-sumtype/result";
-import { matchTag } from "ts-sumtype/match";
+import { variant } from "ts-sumtype/variant";
 ```
 
-`ts-sumtype/variant`, `/match`, `/result`, `/option`, `/unwrap`, `/adapt`, `/pipe`.
+`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/pipe`.
 
 ---
 

@@ -19,7 +19,6 @@ const casesDir = join(surveyDir, "cases");
 // Internal type names a user never wrote and cannot look up in their own code. Their presence
 // in a diagnostic is the automatable proxy for "this message is about the library's insides".
 const INTERNAL_NAMES = [
-  "CasesMixed", "ArmResults", "FallbackResult", "HandlerPayload", "NotFn", "Rest<",
   "FrozenArray", "Frozen<", "SingleKeyed", "ExtractVariant", "PayloadOf", "NestVariant",
   "ErrShape", "AnyResult", "ValuesOf", "ErrorsOf", "ValueOf", "HaltOf",
   "UnwrapOk", "UnwrapSome", "HaltErr", "HaltNone", "EnsureOk", "EnsureSome",
@@ -319,7 +318,7 @@ if (filter) {
   for (const c of hits) {
     process.stdout.write(`\n${c.slug}  (${c.kind})\n  ${c.title}\n  ${c.intent}\n`);
     for (const [label, side] of [["ts-sumtype", c.lib], ["plain TypeScript", c.ctl]]) {
-      process.stdout.write(`\n  ── ${label} — ${side.feature}\n`);
+      process.stdout.write(`\n  ── ${label} (${side.feature})\n`);
       if (side.note) process.stdout.write(`  ${side.note}\n`);
       process.stdout.write(
         side.count === 0

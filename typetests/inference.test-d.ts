@@ -1,6 +1,5 @@
 import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
-  matchTag,
   ok, err, errVariant, isOk, isErr, fromThrowable, allErrors, toOption,
   type Ok, type Err, type Result,
   some, none, isSome, isNone, someOr,
@@ -107,11 +106,19 @@ const nested = tagged("a", "b")({ c: { x: 1 } });
 type Nested = NestVariant<["a", "b"], Sum<{ c: { x: number } }>>;
 const nestedProbe: Nested = nested;
 
-// ── T8: matchTag
+// ── T8: a declared return type makes a switch over the tag exhaustive: omitting a case leaves a
+// path with no return, which the annotation rejects.
 type Action = Sum<{ go: { n: number }; stop: null }>;
 declare const action: Action;
-const m1 = matchTag(action, { go: (p) => p.n, stop: -1 });
-const m1Probe: number = m1;
+function step(a: Action): number {
+  switch (a.tag) {
+    case "go":
+      return a.go.n;
+    case "stop":
+      return -1;
+  }
+}
+const m1Probe: number = step(action);
 
 // ── T9: multi-step Result/Option composition via early-return. The return type is the union of
 // every branch's outcome, one sum type at a time; T12 covers that same shape through
@@ -171,7 +178,12 @@ if (expr.tag === "paren") {
   const inner: Expr = expr.paren;
 }
 function evalExpr(e: Expr): number {
-  return matchTag(e, { num: (n) => n, paren: evalExpr });
+  switch (e.tag) {
+    case "num":
+      return e.num;
+    case "paren":
+      return evalExpr(e.paren);
+  }
 }
 const builtExpr: Expr = variant({ paren: variant({ num: 1 }) });
 
@@ -291,15 +303,16 @@ const builtTerm: Term = variant({ seq: { left: variant({ id: null }), right: var
 
 // `Frozen<Term>` is `Term`, so a recursive traversal over a frozen ADT still type checks
 function countTerms(t: Term): number {
-  return matchTag(t, {
-    id: 1,
-    seq: (s) => countTerms(s.left) + countTerms(s.right),
-    kids: (xs) => xs.reduce((n, x) => n + countTerms(x), 0),
-    table: (tbl) => Object.values(tbl).reduce((n, x) => n + countTerms(x), 0),
-    span: 1,
-    render: 1,
-    stamp: 1,
-  });
+  switch (t.tag) {
+    case "seq":
+      return countTerms(t.seq.left) + countTerms(t.seq.right);
+    case "kids":
+      return t.kids.reduce((n, x) => n + countTerms(x), 0);
+    case "table":
+      return Object.values(t.table).reduce((n, x) => n + countTerms(x), 0);
+    default:
+      return 1;
+  }
 }
 
 // Frozen applies to a sum type that already exists, not only to one being declared here
@@ -392,7 +405,14 @@ function t14MapOk<T, U, E>(r: Result<T, E>, f: (t: T) => U): Result<U, E> {
 type Expr15 = Sum<{ atom: Unit; wrap: Expr15; twice: Expr15 }>;
 const built15: Expr15 = variant({ wrap: variant({ atom: null }) });
 function depth15(x: Expr15): number {
-  return matchTag(x, { atom: () => 0, wrap: (i) => 1 + depth15(i), twice: (i) => 2 * depth15(i) });
+  switch (x.tag) {
+    case "atom":
+      return 0;
+    case "wrap":
+      return 1 + depth15(x.wrap);
+    case "twice":
+      return 2 * depth15(x.twice);
+  }
 }
 declare const e15: Expr15;
 if (e15.tag === "wrap") {
