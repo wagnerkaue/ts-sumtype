@@ -1,6 +1,6 @@
 import { isOk, type Ok, type Result } from "./result";
 
-/** The value `allResults` pulls out of one `Ok` element. */
+/** The value `all` pulls out of one `Ok` element. */
 type ValueOf<R> = R extends Ok<infer T> ? T : never;
 /** The halting member of an element: its `Err`. */
 type HaltOf<X> = Exclude<X, Ok<unknown>>;
@@ -34,7 +34,7 @@ type ValuesOf<R extends readonly unknown[]> = {
 };
 
 /** Ok-of-a-tuple over `Result`s: all `Ok`, or the first `Err` found. */
-export function allResults<R extends readonly Result<unknown, unknown>[]>(
+export function all<R extends readonly Result<unknown, unknown>[]>(
   items: [...R],
 ): Ok<ValuesOf<R>> | HaltOf<R[number]> {
   const values: unknown[] = [];

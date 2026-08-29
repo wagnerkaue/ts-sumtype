@@ -2,15 +2,12 @@
   "tsVersion": "6.0.3",
   "cases": {
     "baseline-pipe-chain": {
-      "anomaly": "baseline did not compile clean",
+      "anomaly": null,
       "lib": {
-        "count": 2,
-        "codes": [
-          "TS2305",
-          "TS2304"
-        ],
-        "chars": 83,
-        "lines": 2,
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
         "depth": 0,
         "leaks": [],
         "sumExpansions": 0,
@@ -615,7 +612,7 @@
           "TS2571",
           "TS2345"
         ],
-        "chars": 322,
+        "chars": 313,
         "lines": 3,
         "depth": 1,
         "leaks": [],
@@ -667,7 +664,7 @@
         "overload": false
       }
     },
-    "allresults-destructured": {
+    "all-destructured": {
       "anomaly": null,
       "lib": {
         "count": 1,
@@ -786,14 +783,13 @@
     "pipe-step-mismatch": {
       "anomaly": null,
       "lib": {
-        "count": 2,
+        "count": 1,
         "codes": [
-          "TS2305",
-          "TS2304"
+          "TS2345"
         ],
-        "chars": 83,
-        "lines": 2,
-        "depth": 0,
+        "chars": 211,
+        "lines": 3,
+        "depth": 2,
         "leaks": [],
         "sumExpansions": 0,
         "truncated": false,
@@ -816,13 +812,12 @@
     "pipe-too-many-steps": {
       "anomaly": "plain TypeScript accepts this; only the library rejects it",
       "lib": {
-        "count": 2,
+        "count": 1,
         "codes": [
-          "TS2305",
-          "TS2304"
+          "TS2554"
         ],
-        "chars": 83,
-        "lines": 2,
+        "chars": 35,
+        "lines": 1,
         "depth": 0,
         "leaks": [],
         "sumExpansions": 0,
@@ -842,16 +837,12 @@
       }
     },
     "pipe-in-generic-fn": {
-      "anomaly": "baseline did not compile clean",
+      "anomaly": null,
       "lib": {
-        "count": 4,
-        "codes": [
-          "TS2305",
-          "TS2304",
-          "TS7006"
-        ],
-        "chars": 171,
-        "lines": 4,
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
         "depth": 0,
         "leaks": [],
         "sumExpansions": 0,

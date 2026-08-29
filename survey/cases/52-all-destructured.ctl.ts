@@ -1,4 +1,4 @@
-// @case    allresults-destructured
+// @case    all-destructured
 // @feature hand-written collector
 // @kind    mistake
 // @title   The returned Result destructured as a tuple

@@ -44,18 +44,18 @@ type EnsureOk<S> = S extends Ok<unknown> ? S : S extends Err<unknown> ? S : Ok<S
  * unconstrained generic: `Unwrap<V>` has no resolution for a generic `V`, so unwrapping the seed
  * that way rejects generic callers.
  */
-export function pipeResult<V>(value: V): EnsureOk<V>;
-export function pipeResult<In1, F1 extends (arg: In1) => any, E1 = never>(
+export function pipe<V>(value: V): EnsureOk<V>;
+export function pipe<In1, F1 extends (arg: In1) => any, E1 = never>(
   value: Result<In1, E1> | In1,
   f1: F1,
 ): Err<E1> | EnsureOk<ReturnType<F1>>;
-export function pipeResult<
+export function pipe<
   In1,
   F1 extends (arg: In1) => any,
   F2 extends (arg: UnwrapOk<ReturnType<F1>>) => any,
   E1 = never,
 >(value: Result<In1, E1> | In1, f1: F1, f2: F2): Err<E1> | HaltErr<ReturnType<F1>> | EnsureOk<ReturnType<F2>>;
-export function pipeResult<
+export function pipe<
   In1,
   F1 extends (arg: In1) => any,
   F2 extends (arg: UnwrapOk<ReturnType<F1>>) => any,
@@ -67,7 +67,7 @@ export function pipeResult<
   f2: F2,
   f3: F3,
 ): Err<E1> | HaltErr<ReturnType<F1>> | HaltErr<ReturnType<F2>> | EnsureOk<ReturnType<F3>>;
-export function pipeResult<
+export function pipe<
   In1,
   F1 extends (arg: In1) => any,
   F2 extends (arg: UnwrapOk<ReturnType<F1>>) => any,
@@ -81,7 +81,7 @@ export function pipeResult<
   f3: F3,
   f4: F4,
 ): Err<E1> | HaltErr<ReturnType<F1>> | HaltErr<ReturnType<F2>> | HaltErr<ReturnType<F3>> | EnsureOk<ReturnType<F4>>;
-export function pipeResult<
+export function pipe<
   In1,
   F1 extends (arg: In1) => any,
   F2 extends (arg: UnwrapOk<ReturnType<F1>>) => any,
@@ -103,7 +103,7 @@ export function pipeResult<
   | HaltErr<ReturnType<F3>>
   | HaltErr<ReturnType<F4>>
   | EnsureOk<ReturnType<F5>>;
-export function pipeResult<
+export function pipe<
   In1,
   F1 extends (arg: In1) => any,
   F2 extends (arg: UnwrapOk<ReturnType<F1>>) => any,
@@ -128,7 +128,7 @@ export function pipeResult<
   | HaltErr<ReturnType<F4>>
   | HaltErr<ReturnType<F5>>
   | EnsureOk<ReturnType<F6>>;
-export function pipeResult<
+export function pipe<
   In1,
   F1 extends (arg: In1) => any,
   F2 extends (arg: UnwrapOk<ReturnType<F1>>) => any,
@@ -156,7 +156,7 @@ export function pipeResult<
   | HaltErr<ReturnType<F5>>
   | HaltErr<ReturnType<F6>>
   | EnsureOk<ReturnType<F7>>;
-export function pipeResult<
+export function pipe<
   In1,
   F1 extends (arg: In1) => any,
   F2 extends (arg: UnwrapOk<ReturnType<F1>>) => any,
@@ -187,6 +187,6 @@ export function pipeResult<
   | HaltErr<ReturnType<F6>>
   | HaltErr<ReturnType<F7>>
   | EnsureOk<ReturnType<F8>>;
-export function pipeResult(value: unknown, ...fns: readonly AnyFn[]): unknown {
+export function pipe(value: unknown, ...fns: readonly AnyFn[]): unknown {
   return runPipe(value, fns);
 }

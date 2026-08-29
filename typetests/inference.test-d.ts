@@ -4,9 +4,9 @@ import {
   type Ok, type Err, type Result,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
-  unwrap, unwrapOr, expect, fromNullable, allResults,
+  unwrap, unwrapOr, expect, fromNullable, all,
   fromFlat, fromKeyed, fromEnum, type Unflattened, type Rekeyed,
-  pipeResult,
+  pipe,
 } from "../src/index";
 
 // ── T1: Sum basics -- a single case is just Sum with one key
@@ -91,12 +91,12 @@ const fn1Probe: Option<string> = fn1;
 const fn2 = fromNullable("x", "was null" as const);
 const fn2Probe: Result<string, "was null"> = fn2;
 
-// `allResults` keeps each element's value type in position, and an empty array still collects
+// `all` keeps each element's value type in position, and an empty array still collects
 // into a `Result` rather than leaving the tag to be guessed.
-const all1 = allResults([ok(1), ok("a")]);
+const all1 = all([ok(1), ok("a")]);
 const all1Probe: Result<[number, string], never> = all1;
 
-const all3 = allResults([]);
+const all3 = all([]);
 const all3Probe: Result<[], never> = all3;
 
 // ── T7: tagged() nesting
@@ -120,7 +120,7 @@ const m1Probe: number = step(action);
 
 // ── T9: multi-step Result/Option composition via early-return. The return type is the union of
 // every branch's outcome, one sum type at a time; T12 covers that same shape through
-// pipeResult.
+// pipe.
 type NotFoundErr = Sum<{ not_found: { id: number } }>;
 declare function parseId(s: string): Result<number, ParseErr>;
 declare function findUser(id: number): Result<{ name: string }, NotFoundErr>;
@@ -196,31 +196,31 @@ type Joined = Sum<{ a: number }> | Sum<{ b: string }>;
 const fannedAsJoined: Joined = variant({ a: 1 }) as Fanned;
 const joinedAsFanned: Fanned = variant({ b: "x" }) as Joined;
 
-// ── T12: pipeResult -- the two Result steps from T9, threaded through pipeResult instead of
+// ── T12: pipe -- the two Result steps from T9, threaded through pipe instead of
 // early-return, plus a raw seed
 declare function chargeGateway(id: number, cents: number): Result<{ receiptId: string }, ParseErr>;
-const p1 = pipeResult(parseId("42"), (id) => findUser(id));
+const p1 = pipe(parseId("42"), (id) => findUser(id));
 const p1Probe: Result<{ name: string }, ParseErr | NotFoundErr> = p1;
 
-const p2 = pipeResult(parseId("42"), (id) => chargeGateway(id, 500));
+const p2 = pipe(parseId("42"), (id) => chargeGateway(id, 500));
 const p2Probe: Result<{ receiptId: string }, ParseErr> = p2;
 
 // a raw seed, and a plain (unwrapped) passthrough step mixed with a Result step
-const p3 = pipeResult(2, (n) => n + 1, (n) => (n > 0 ? ok(n) : err("negative" as const)));
+const p3 = pipe(2, (n) => n + 1, (n) => (n > 0 ? ok(n) : err("negative" as const)));
 const p3Probe: Result<number, "negative"> = p3;
 
-// pipeResult(value) with no steps still returns a Result: a raw seed is wrapped in ok(...)
-const p4 = pipeResult(5);
+// pipe(value) with no steps still returns a Result: a raw seed is wrapped in ok(...)
+const p4 = pipe(5);
 const p4Probe: Ok<number> = p4;
 
 // a mismatched step -- fed the wrong input type -- is a compile error at that step
-pipeResult(
+pipe(
   parseId("42"),
   // @ts-expect-error findUser expects a number (parseId's payload), not a string
   (id: string) => findUser(id),
 );
 
-// pipeResult's seed takes its expected type from the first step rather than from a conditional
+// pipe's seed takes its expected type from the first step rather than from a conditional
 // unwrap of its own type (`Unwrap<V>`), which TypeScript can't resolve for a bare unconstrained
 // generic. That is what lets the generic caller below type check instead of failing with "B could
 // be instantiated with an arbitrary type ...".
@@ -231,7 +231,7 @@ type Isomorphism<A, B, K> = {
 };
 function inverse<A, B, K>(i: Isomorphism<A, B, K>): Isomorphism<B, A, K> {
   return {
-    canon: (b) => pipeResult(b, i.undo, i.canon),
+    canon: (b) => pipe(b, i.undo, i.canon),
     do: i.undo,
     undo: i.do,
   };
@@ -317,9 +317,9 @@ function infallible(x: number): Result<number, never> {
 }
 const infallibleValue: number = infallible(5).ok;
 
-// pipeResult's error slot defaults to `never`, so a pipe that cannot halt reads the same way
-const pipeValue: string = pipeResult({ id: "x" }, (r) => r.id).ok;
-const pipeSeeded: number = pipeResult(ok(5), (v) => v + 1).ok;
+// pipe's error slot defaults to `never`, so a pipe that cannot halt reads the same way
+const pipeValue: string = pipe({ id: "x" }, (r) => r.id).ok;
+const pipeSeeded: number = pipe(ok(5), (v) => v + 1).ok;
 
 // the collapse must not leak into a generic `E`: a function still building a `Result<T, E>`
 // for an unresolved `E` accepts `err(...)` with no assertion at the construction site.

@@ -11,7 +11,7 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipeResult](#piperesult) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipe](#pipe) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
 import { variant, type Sum, type Unit } from "ts-sumtype";
@@ -438,7 +438,7 @@ err(caught); // { tag: "error", error: caught }: whatever caught is, stored as-i
 | `allErrors(results)` | one `Ok` of every value, or an `Err` collecting **every** error |
 | `toOption(r)` | `Ok → Some`, `Err → None` |
 
-`allErrors` gathers all failures. When you want to stop at the first one instead, use [`allResults`](#collecting-results).
+`allErrors` gathers all failures. When you want to stop at the first one instead, use [`all`](#collecting-results).
 
 ---
 
@@ -500,23 +500,23 @@ fromNullable(raw.savedMethod, "no method"); // Result<PaymentMethod, "no method"
 
 ### Collecting results
 
-`allResults` walks an array of `Result`s, returning the tuple of values or short-circuiting on the first `Err` found:
+`all` walks an array of `Result`s, returning the tuple of values or short-circuiting on the first `Err` found:
 
 ```typescript
-import { allResults } from "ts-sumtype";
+import { all } from "ts-sumtype";
 
-allResults([authorizeMethod(a), authorizeMethod(b)]);      // Ok<[PaymentMethod, PaymentMethod]>
-allResults([authorizeMethod(a), authorizeMethod(bad)]);    // Err, stops at the first declined method
+all([authorizeMethod(a), authorizeMethod(b)]);      // Ok<[PaymentMethod, PaymentMethod]>
+all([authorizeMethod(a), authorizeMethod(bad)]);    // Err, stops at the first declined method
 ```
 
-### pipeResult
+### pipe
 
-`allResults` collects a fixed array of independent `Result`s. The other common shape is a *sequence*: each step depends on the previous one's success value, and any step failing should stop the rest from running. `pipeResult(value, ...fns)` threads `value` through each function left to right, feeding each one the previous step's unwrapped `ok`; a step returning `error` halts the pipe immediately, returned as-is, and the remaining functions never run:
+`all` collects a fixed array of independent `Result`s. The other common shape is a *sequence*: each step depends on the previous one's success value, and any step failing should stop the rest from running. `pipe(value, ...fns)` threads `value` through each function left to right, feeding each one the previous step's unwrapped `ok`; a step returning `error` halts the pipe immediately, returned as-is, and the remaining functions never run:
 
 ```typescript
-import { pipeResult } from "ts-sumtype";
+import { pipe } from "ts-sumtype";
 
-pipeResult(
+pipe(
   authorizeMethod(method),          // Result<PaymentMethod, AuthorizeErr>
   (m) => chargeGateway(m, cents),   // Result<Receipt, GatewayErr>
   (r) => confirmReceipt(r),         // Result<Confirmation, ConfirmErr>
@@ -527,10 +527,10 @@ pipeResult(
 `value` itself doesn't have to already be wrapped, and neither does a step's return: a plain value (not a `Result`) is passed straight through to the next step and can never halt. That's useful for a pure transform in the middle of a pipe, `(m) => m.id` say, without wrapping it in `ok(...)` just to satisfy the types:
 
 ```typescript
-pipeResult(raw, (r) => authorizeMethod(r.method), (m) => m.id, (id) => chargeGateway(id, cents));
+pipe(raw, (r) => authorizeMethod(r.method), (m) => m.id, (id) => chargeGateway(id, cents));
 ```
 
-`pipeResult` always returns a `Result`, no exceptions: if the *last* step (or a zero-step `value`) is a plain value rather than one, it's wrapped in `ok(...)`, so `pipeResult(raw, (r) => r.id)` is a `Result<string, never>`, not a bare `string`, and `pipeResult(5)` is `Ok<5>`.
+`pipe` always returns a `Result`, no exceptions: if the *last* step (or a zero-step `value`) is a plain value rather than one, it's wrapped in `ok(...)`, so `pipe(raw, (r) => r.id)` is a `Result<string, never>`, not a bare `string`, and `pipe(5)` is `Ok<5>`.
 
 Each step's parameter type is checked against the previous step's declared return type, so feeding a step the wrong shape is a compile error at that step. Up to 8 steps are supported. A step that produces an `Option` reaches the next one through [`someOr`](#option), which names the reason the value is absent.
 

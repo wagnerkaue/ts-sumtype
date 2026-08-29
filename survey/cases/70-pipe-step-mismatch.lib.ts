@@ -1,5 +1,5 @@
 // @case    pipe-step-mismatch
-// @feature pipeResult()
+// @feature pipe()
 // @kind    mistake
 // @title   A step's input does not match the previous step's output
 // @intent  Parse, then round; the author forgets the middle step turned the number into a string.
@@ -11,4 +11,4 @@ const parse = (raw: string): Result<number, string> =>
 const show = (n: number): string => n.toFixed(2);
 const round = (n: number): number => Math.round(n);
 
-export const out = pipeResult("41.5", parse, show, round);
+export const out = pipe("41.5", parse, show, round);

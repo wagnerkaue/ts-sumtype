@@ -1,5 +1,5 @@
 // @case    pipe-too-many-steps
-// @feature pipeResult() overload table
+// @feature pipe() overload table
 // @kind    mistake
 // @title   Nine steps, one past the overload table
 // @intent  Chain nine transformations; pipe is typed for eight.
@@ -9,4 +9,4 @@ import { pipe } from "ts-sumtype";
 
 const inc = (n: number): number => n + 1;
 
-export const out = pipeResult(0, inc, inc, inc, inc, inc, inc, inc, inc, inc);
+export const out = pipe(0, inc, inc, inc, inc, inc, inc, inc, inc, inc);

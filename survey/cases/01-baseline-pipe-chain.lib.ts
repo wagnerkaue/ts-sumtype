@@ -13,4 +13,4 @@ const parse = (raw: string): Result<number, string> => {
 const validate = (n: number): Result<number, string> => (n > 0 ? ok(n) : err("not positive"));
 const format = (n: number): string => n.toFixed(2);
 
-export const out = pipeResult("41.5", parse, validate, format);
+export const out = pipe("41.5", parse, validate, format);

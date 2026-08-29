@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ok, some, err, errVariant, none, someOr, unwrap, unwrapOr, expect as expectFn, fromNullable, allResults, type Result } from "../src/index";
+import { ok, some, err, errVariant, none, someOr, unwrap, unwrapOr, expect as expectFn, fromNullable, all, type Result } from "../src/index";
 
 describe("unwrap", () => {
   it("unwrap", () => {
@@ -35,14 +35,14 @@ describe("unwrap", () => {
     expect(fromNullable(null, "err")).toEqual({ tag: "error", error: "err" });
   });
 
-  it("allResults short-circuits on first error", () => {
-    expect(allResults([ok(1), ok(2)])).toEqual({ tag: "ok", ok: [1, 2] });
-    const r = allResults([ok(1), errVariant({ bad: null })]);
+  it("all short-circuits on first error", () => {
+    expect(all([ok(1), ok(2)])).toEqual({ tag: "ok", ok: [1, 2] });
+    const r = all([ok(1), errVariant({ bad: null })]);
     expect(r.tag).toBe("error");
   });
 
-  it("allResults([]) returns Ok<[]>", () => {
-    expect(allResults([])).toEqual({ tag: "ok", ok: [] });
+  it("all([]) returns Ok<[]>", () => {
+    expect(all([])).toEqual({ tag: "ok", ok: [] });
   });
 
 });
