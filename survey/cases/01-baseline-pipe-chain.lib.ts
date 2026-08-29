@@ -1,10 +1,10 @@
 // @case    baseline-pipe-chain
-// @feature pipeResult
+// @feature pipe
 // @kind    baseline
 // @title   Correct three-step pipe
 // @intent  Reference point: parse, validate, format -- each step lines up with the last.
 
-import { pipeResult, ok, err, type Result } from "ts-sumtype";
+import { pipe, ok, err, type Result } from "ts-sumtype";
 
 const parse = (raw: string): Result<number, string> => {
   const n = Number(raw);

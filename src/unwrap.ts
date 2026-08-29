@@ -1,36 +1,31 @@
-import { type Sum } from "./variant";
-import { type Ok, type Result } from "./result";
-import { type Some, type Option } from "./option";
+import { isOk, type Ok, type Result } from "./result";
 
-type ValueOf<R> = R extends Ok<infer T> ? T : R extends Some<infer T> ? T : never;
+/** The value `allResults` pulls out of one `Ok` element. */
+type ValueOf<R> = R extends Ok<infer T> ? T : never;
+/** The halting member of an element: its `Err`. */
+type HaltOf<X> = Exclude<X, Ok<unknown>>;
 
-/** A tagged value read structurally. Narrowing a bare generic `R` yields `Extract<R, ...>`, which
- *  exposes no payload key, so these functions read `x` through this view instead. */
-type AnyTagged = { tag: string } & Record<string, unknown>;
-type HaltOf<X> = Exclude<X, Ok<unknown> | Some<unknown>>;
-
-/** Returns the value, or throws if `x` is an `Err` or `None`. */
-export function unwrap<R extends { tag: string }>(x: R): ValueOf<R> {
-  const v = x as AnyTagged;
-  if (v.tag === "ok") return v.ok as ValueOf<R>;
-  if (v.tag === "some") return v.some as ValueOf<R>;
-  if (v.tag === "error") throw new Error("called unwrap() on an err Result: " + String(v.error));
-  throw new Error("called unwrap() on a none Option");
+/**
+ * Returns the success value, or throws with the error payload.
+ *
+ * A `Result` is the only thing worth unwrapping this way: its error case carries the reason the
+ * value is missing, so the throw can report it. `None` carries nothing, and a throw on it says no
+ * more than the call site already did. Give the absence a reason with `someOr` first, and the
+ * `Result` that comes back unwraps here.
+ */
+export function unwrap<T, E>(r: Result<T, E>): T {
+  if (isOk(r)) return r.ok;
+  throw new Error("called unwrap() on an err Result: " + String((r as { error: unknown }).error));
 }
 
-/** Returns the value, or `fallback` if `x` is an `Err` or `None`. */
-export function unwrapOr<R extends { tag: string }>(x: R, fallback: ValueOf<R>): ValueOf<R> {
-  const v = x as AnyTagged;
-  if (v.tag === "ok") return v.ok as ValueOf<R>;
-  if (v.tag === "some") return v.some as ValueOf<R>;
-  return fallback;
+/** Returns the success value, or `fallback` if `r` is an `Err`. */
+export function unwrapOr<T, E>(r: Result<T, E>, fallback: T): T {
+  return isOk(r) ? r.ok : fallback;
 }
 
-/** Returns the value, or throws `Error(message)` if `x` is an `Err` or `None`. */
-export function expect<R extends { tag: string }>(x: R, message: string): ValueOf<R> {
-  const v = x as AnyTagged;
-  if (v.tag === "ok") return v.ok as ValueOf<R>;
-  if (v.tag === "some") return v.some as ValueOf<R>;
+/** Returns the success value, or throws `Error(message)` if `r` is an `Err`. */
+export function expect<T, E>(r: Result<T, E>, message: string): T {
+  if (isOk(r)) return r.ok;
   throw new Error(message);
 }
 
@@ -48,16 +43,4 @@ export function allResults<R extends readonly Result<unknown, unknown>[]>(
     return item;
   }
   return { tag: "ok", ok: values } as Ok<ValuesOf<R>>;
-}
-
-/** Some-of-a-tuple over `Option`s: all `Some`, or the first `None` found. */
-export function allOptions<R extends readonly Option<unknown>[]>(
-  items: [...R],
-): Some<ValuesOf<R>> | HaltOf<R[number]> {
-  const values: unknown[] = [];
-  for (const item of items as any[]) {
-    if (item.tag === "some") { values.push(item.some); continue; }
-    return item;
-  }
-  return { tag: "some", some: values } as Some<ValuesOf<R>>;
 }

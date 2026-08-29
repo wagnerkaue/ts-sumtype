@@ -4,9 +4,9 @@ import {
   type Ok, type Err, type Result,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
-  unwrap, unwrapOr, expect, fromNullable, allResults, allOptions,
+  unwrap, unwrapOr, expect, fromNullable, allResults,
   fromFlat, fromKeyed, fromEnum, type Unflattened, type Rekeyed,
-  pipeResult, pipeOption,
+  pipeResult,
 } from "../src/index";
 
 // ── T1: Sum basics -- a single case is just Sum with one key
@@ -69,37 +69,35 @@ if (isSome(o3)) {
 const converted = someOr(some(1), "missing");
 const convertedProbe: Result<number, string> = converted;
 
-// ── T6: shared overloaded helpers (dispatch by argument shape)
+// ── T6: unwrap, unwrapOr and expect take a `Result`. An `Option` reaches them through `someOr`,
+// which is where the absence gets the reason the throw reports.
 const u1 = unwrap(ok(1) as Result<number, string>);
 const u1Probe: number = u1;
-const u2 = unwrap(some(1) as Option<number>);
+const u2 = unwrap(someOr(some(1) as Option<number>, "missing"));
 const u2Probe: number = u2;
 
 declare const flatErrResult2: Result<number, string>;
 const uo1 = unwrapOr(flatErrResult2, 0);
-const uo2 = unwrapOr(none<number>(), 0);
+const uo2 = unwrapOr(someOr(none<number>(), "missing"), 0);
 
 const ex1 = expect(ok(1) as Result<number, string>, "msg");
-const ex2 = expect(some(1) as Option<number>, "msg");
+const ex2 = expect(someOr(some(1) as Option<number>, "missing"), "msg");
+
+// @ts-expect-error an Option has no error payload to report, so it is not unwrappable directly
+unwrap(some(1) as Option<number>);
 
 const fn1 = fromNullable("x");
 const fn1Probe: Option<string> = fn1;
 const fn2 = fromNullable("x", "was null" as const);
 const fn2Probe: Result<string, "was null"> = fn2;
 
-// `allResults` and `allOptions` are separate functions, so an empty array still names
-// which sum type it collects into instead of leaving the tag to be guessed.
+// `allResults` keeps each element's value type in position, and an empty array still collects
+// into a `Result` rather than leaving the tag to be guessed.
 const all1 = allResults([ok(1), ok("a")]);
 const all1Probe: Result<[number, string], never> = all1;
 
-const all2 = allOptions([some(1), some("a")]);
-const all2Probe: Option<[number, string]> = all2;
-
 const all3 = allResults([]);
 const all3Probe: Result<[], never> = all3;
-
-const all4 = allOptions([]);
-const all4Probe: Option<[]> = all4;
 
 // ── T7: tagged() nesting
 const nested = tagged("a", "b")({ c: { x: 1 } });
@@ -122,7 +120,7 @@ const m1Probe: number = step(action);
 
 // ── T9: multi-step Result/Option composition via early-return. The return type is the union of
 // every branch's outcome, one sum type at a time; T12 covers that same shape through
-// pipeResult/pipeOption.
+// pipeResult.
 type NotFoundErr = Sum<{ not_found: { id: number } }>;
 declare function parseId(s: string): Result<number, ParseErr>;
 declare function findUser(id: number): Result<{ name: string }, NotFoundErr>;
@@ -198,8 +196,8 @@ type Joined = Sum<{ a: number }> | Sum<{ b: string }>;
 const fannedAsJoined: Joined = variant({ a: 1 }) as Fanned;
 const joinedAsFanned: Fanned = variant({ b: "x" }) as Joined;
 
-// ── T12: pipeResult / pipeOption -- the two Result steps from T9, threaded through pipeResult
-// instead of early-return, plus a raw seed and a separate pipeOption chain
+// ── T12: pipeResult -- the two Result steps from T9, threaded through pipeResult instead of
+// early-return, plus a raw seed
 declare function chargeGateway(id: number, cents: number): Result<{ receiptId: string }, ParseErr>;
 const p1 = pipeResult(parseId("42"), (id) => findUser(id));
 const p1Probe: Result<{ name: string }, ParseErr | NotFoundErr> = p1;
@@ -222,37 +220,18 @@ pipeResult(
   (id: string) => findUser(id),
 );
 
-declare function findUserOption(id: number): Option<{ name: string }>;
-const p5 = pipeOption(some(1), (id) => findUserOption(id), (u) => nicknameOf(u));
-const p5Probe: Option<string> = p5;
-
-// pipeOption(value) with no steps still returns an Option: an already-wrapped seed passes through
-const p6 = pipeOption(some("x"));
-const p6Probe: Option<string> = p6;
-
-// ... and a raw seed is wrapped in some(...)
-const p7 = pipeOption("x");
-const p7Probe: Some<string> = p7;
-
-// a mismatched step is a compile error here too
-pipeOption(
-  some(1),
-  // @ts-expect-error findUserOption expects a number, not a string
-  (id: string) => findUserOption(id),
-);
-
-// pipeOption's seed takes its expected type from the first step rather than from a conditional
+// pipeResult's seed takes its expected type from the first step rather than from a conditional
 // unwrap of its own type (`Unwrap<V>`), which TypeScript can't resolve for a bare unconstrained
 // generic. That is what lets the generic caller below type check instead of failing with "B could
 // be instantiated with an arbitrary type ...".
 type Isomorphism<A, B, K> = {
-  canon: (a: A) => Option<K>;
-  do: (a: A) => Option<B>;
-  undo: (b: B) => Option<A>;
+  canon: (a: A) => Result<K, string>;
+  do: (a: A) => Result<B, string>;
+  undo: (b: B) => Result<A, string>;
 };
 function inverse<A, B, K>(i: Isomorphism<A, B, K>): Isomorphism<B, A, K> {
   return {
-    canon: (b) => pipeOption(b, i.undo, i.canon),
+    canon: (b) => pipeResult(b, i.undo, i.canon),
     do: i.undo,
     undo: i.do,
   };

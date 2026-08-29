@@ -11,7 +11,7 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipeResult / pipeOption](#piperesult--pipeoption) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipeResult](#piperesult) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
 import { variant, type Sum, type Unit } from "ts-sumtype";
@@ -471,18 +471,24 @@ if (isSome(c.savedMethod)) charge(c.savedMethod.some, cents); // some's payload 
 
 ## Working across Result and Option
 
-`unwrap`, `unwrapOr`, and `expect` work on a `Result` or an `Option` under one name each, the same way Rust's `Option` and `Result` both happen to have a `.unwrap()`: they check for either success tag, `ok` or `some`, at runtime, so the same function reads whichever one you hand it:
+`unwrap`, `unwrapOr`, and `expect` take a `Result`. The error case carries the reason the value is missing, which is what `unwrap` reports when it throws:
 
 ```typescript
-import { unwrap, unwrapOr, expect, fromNullable } from "ts-sumtype";
+import { unwrap, unwrapOr, expect, someOr, fromNullable } from "ts-sumtype";
 
-unwrap(authorizeMethod(method));   // PaymentMethod    (Ok → value)
-unwrap(c.savedMethod);             // PaymentMethod, or throws if none saved
-
+unwrap(authorizeMethod(method));                             // PaymentMethod, or throws with the error payload
 unwrapOr(authorizeMethod(method), variant({ cash: unit }));  // the authorized method, or cash if it was declined
-unwrapOr(c.savedMethod, variant({ cash: unit }));             // the saved method, or cash as a default
+expect(authorizeMethod(method), "could not authorize");      // PaymentMethod, or throws Error("could not authorize")
+```
 
-expect(c.savedMethod, "no saved payment method"); // PaymentMethod, or throws Error("no saved payment method")
+An `Option` gets there through [`someOr`](#option), which is where the absence acquires a reason. `None` carries nothing, so unwrapping one directly could only ever throw a message the call site already knew:
+
+```typescript
+unwrap(someOr(c.savedMethod, "no saved payment method"));
+// PaymentMethod, or throws Error("no saved payment method")
+
+unwrapOr(someOr(c.savedMethod, "absent"), variant({ cash: unit }));
+// the saved method, or cash as a default
 ```
 
 `fromNullable` reads its arity: one argument produces an `Option`, two produce a `Result` with the second as the error. A customer record arriving from the network with a nullable field is the natural source:
@@ -494,21 +500,18 @@ fromNullable(raw.savedMethod, "no method"); // Result<PaymentMethod, "no method"
 
 ### Collecting results
 
-`allResults` walks an array of `Result`s, and `allOptions` walks an array of `Option`s, each returning the tuple of values or short-circuiting on the first `Err`/`None` found:
+`allResults` walks an array of `Result`s, returning the tuple of values or short-circuiting on the first `Err` found:
 
 ```typescript
-import { allResults, allOptions } from "ts-sumtype";
+import { allResults } from "ts-sumtype";
 
 allResults([authorizeMethod(a), authorizeMethod(b)]);      // Ok<[PaymentMethod, PaymentMethod]>
 allResults([authorizeMethod(a), authorizeMethod(bad)]);    // Err, stops at the first declined method
-
-allOptions([customerA.savedMethod, customerB.savedMethod]); // Some<[PaymentMethod, PaymentMethod]>
-allOptions([customerA.savedMethod, noMethod.savedMethod]);  // None, stops at the first absent method
 ```
 
-### pipeResult / pipeOption
+### pipeResult
 
-`allResults`/`allOptions` collect a fixed array of independent `Result`s/`Option`s. The other common shape is a *sequence*: each step depends on the previous one's success value, and any step failing should stop the rest from running. `pipeResult(value, ...fns)` threads `value` through each function left to right, feeding each one the previous step's unwrapped `ok`; a step returning `error` halts the pipe immediately, returned as-is, and the remaining functions never run:
+`allResults` collects a fixed array of independent `Result`s. The other common shape is a *sequence*: each step depends on the previous one's success value, and any step failing should stop the rest from running. `pipeResult(value, ...fns)` threads `value` through each function left to right, feeding each one the previous step's unwrapped `ok`; a step returning `error` halts the pipe immediately, returned as-is, and the remaining functions never run:
 
 ```typescript
 import { pipeResult } from "ts-sumtype";
@@ -521,27 +524,15 @@ pipeResult(
 // Result<Confirmation, AuthorizeErr | GatewayErr | ConfirmErr>
 ```
 
-`pipeOption(value, ...fns)` is the same shape over `Option`, halting on `none` instead of `error`:
-
-```typescript
-import { pipeOption } from "ts-sumtype";
-
-pipeOption(
-  raw.savedMethod,                  // Option<PaymentMethod>
-  (m) => lookupNickname(m),         // Option<string>
-);
-// Option<string>
-```
-
-`value` itself doesn't have to already be wrapped, and neither does a step's return: a plain value (not a `Result`/`Option`) is passed straight through to the next step and can never halt. That's useful for a pure transform in the middle of a pipe, `(m) => m.id` say, without wrapping it in `ok(...)`/`some(...)` just to satisfy the types:
+`value` itself doesn't have to already be wrapped, and neither does a step's return: a plain value (not a `Result`) is passed straight through to the next step and can never halt. That's useful for a pure transform in the middle of a pipe, `(m) => m.id` say, without wrapping it in `ok(...)` just to satisfy the types:
 
 ```typescript
 pipeResult(raw, (r) => authorizeMethod(r.method), (m) => m.id, (id) => chargeGateway(id, cents));
 ```
 
-`pipeResult` always returns a `Result`, `pipeOption` always returns an `Option`, no exceptions: if the *last* step (or a zero-step `value`) is a plain value rather than one of these, it's wrapped in `ok(...)`/`some(...)`, so `pipeResult(raw, (r) => r.id)` is a `Result<string, never>`, not a bare `string`, and `pipeResult(5)` is `Ok<5>`.
+`pipeResult` always returns a `Result`, no exceptions: if the *last* step (or a zero-step `value`) is a plain value rather than one, it's wrapped in `ok(...)`, so `pipeResult(raw, (r) => r.id)` is a `Result<string, never>`, not a bare `string`, and `pipeResult(5)` is `Ok<5>`.
 
-Each step's parameter type is checked against the previous step's declared return type, so feeding a step the wrong shape is a compile error at that step. Both functions support up to 8 steps. A `pipeResult` step can't return an `Option` (or a `pipeOption` step a `Result`); convert at the boundary with [`someOr`](#option)/[`toOption`](#functions-on-result) between two separate calls.
+Each step's parameter type is checked against the previous step's declared return type, so feeding a step the wrong shape is a compile error at that step. Up to 8 steps are supported. A step that produces an `Option` reaches the next one through [`someOr`](#option), which names the reason the value is absent.
 
 ---
 

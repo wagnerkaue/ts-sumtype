@@ -4,7 +4,7 @@
 // @title   A step's input does not match the previous step's output
 // @intent  Parse, then round; the author forgets the middle step turned the number into a string.
 
-import { pipeResult, ok, err, type Result } from "ts-sumtype";
+import { pipe, ok, err, type Result } from "ts-sumtype";
 
 const parse = (raw: string): Result<number, string> =>
   Number.isNaN(Number(raw)) ? err("not a number") : ok(Number(raw));

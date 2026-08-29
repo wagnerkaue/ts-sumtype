@@ -1,8 +1,8 @@
 // @case    unwrap-non-sum
 // @feature hand-written unwrap
 // @kind    mistake
-// @title   unwrap() applied to a variant that is not Ok or Some
-// @intent  Pull the payload out of a tagged value; unwrap only knows the Result shape.
+// @title   unwrap() applied to a variant that is not a Result
+// @intent  Pull the payload out of a tagged value; unwrap takes a `Result`.
 
 type Res<T> = { ok: true; value: T } | { ok: false; error: string };
 
