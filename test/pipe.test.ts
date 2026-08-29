@@ -27,7 +27,7 @@ describe("pipe", () => {
 
   it("a halting seed short-circuits with no steps run", () => {
     const step = vi.fn((n: number) => ok(n + 1));
-    expect(pipe(errVariant({ nope: null }), step)).toEqual({
+    expect(pipe(errVariant("nope", null), step)).toEqual({
       tag: "error",
       error: { tag: "nope", nope: null },
     });

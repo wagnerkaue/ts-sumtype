@@ -42,7 +42,7 @@ function describe(method: PaymentMethod): string {
   return method.tag;
 }
 
-variant({ paypal: { email: "a@b.com" } });
+variant("paypal", { email: "a@b.com" });
 // { tag: "paypal", paypal: { email: "a@b.com" } }
 ```
 
@@ -127,10 +127,10 @@ type PaymentMethod = Sum<{
   creditCard: CreditCardPayment;
 }>;
 
-variant({ paypal: { email: "a@b.com" } });
+variant("paypal", { email: "a@b.com" });
 // { tag: "paypal", paypal: { email: "a@b.com" } }
 
-variant({ cash: unit });
+variant("cash", unit);
 // { tag: "cash", cash: null }
 ```
 
@@ -158,7 +158,7 @@ type Currency = Sum<{
   solana: Unit;
 }>;
 
-variant({ bitcoin: unit });
+variant("bitcoin", unit);
 // { tag: "bitcoin", bitcoin: null }
 ```
 
@@ -197,7 +197,7 @@ export type Unit = null;
 export const unit: Unit = null;
 ```
 
-`Sum<{ bitcoin: null }>` and `Sum<{ bitcoin: Unit }>` are the same type, `null` and `unit` the same value, so either spelling is accepted anywhere the other is; `null`/`variant({ bitcoin: null })` still work everywhere, `Unit`/`unit` exist for when spelling out the intent is worth the extra word, which is the spelling the rest of this README uses from here on.
+`Sum<{ bitcoin: null }>` and `Sum<{ bitcoin: Unit }>` are the same type, `null` and `unit` the same value, so either spelling is accepted anywhere the other is; `null`/`variant("bitcoin", null)` still work everywhere, `Unit`/`unit` exist for when spelling out the intent is worth the extra word, which is the spelling the rest of this README uses from here on.
 
 ---
 
@@ -230,7 +230,7 @@ if (term.tag === "table") {
 
 Writing `readonly` by hand covers a payload's own fields, one at a time. `Frozen` covers them all at once, along with everything inside a container like `table` and every collection reached on the way down. It applies to a sum type you already have, so `Frozen<Option<Row>>` and `Frozen<Result<Row, GatewayErr>>` work the same way.
 
-Construction is unchanged, since TypeScript ignores `readonly` when comparing object types: `variant({ seq: { left, right } })` still builds a `Term`. Arrays are the exception it does check, and the one thing to plan for: `kids` is a `readonly Term[]`, so a function declaring `Term[]` needs `readonly Term[]` or a copy at the call site. Primitives, functions, `Date`, `RegExp`, `Error`, and `Promise` pass through whole; tuples keep their positions; `Map` and `Set` become `ReadonlyMap` and `ReadonlySet`.
+Construction is unchanged, since TypeScript ignores `readonly` when comparing object types: `variant("seq", { left, right })` still builds a `Term`. Arrays are the exception it does check, and the one thing to plan for: `kids` is a `readonly Term[]`, so a function declaring `Term[]` needs `readonly Term[]` or a copy at the call site. Primitives, functions, `Date`, `RegExp`, `Error`, and `Promise` pass through whole; tuples keep their positions; `Map` and `Set` become `ReadonlyMap` and `ReadonlySet`.
 
 A case referring back to the type being declared is fine, the way `seq` and `kids` do above. A recursive type declared elsewhere is not: `Frozen<Json>` freezes the outer layer and leaves every `Json` inside it mutable, and a function recursing over such a payload stops type checking partway down. Declare those frozen instead, either with the markers written out:
 
@@ -282,10 +282,10 @@ function processorFee(method: PaymentMethod): number {
 A variant serializes as-is, no `toJSON`, no revival step, and the payload key survives even when there's nothing in it:
 
 ```typescript
-JSON.stringify(variant({ paypal: { email: "a@b.com" } }));
+JSON.stringify(variant("paypal", { email: "a@b.com" }));
 // {"tag":"paypal","paypal":{"email":"a@b.com"}}
 
-JSON.stringify(variant({ cash: unit }));
+JSON.stringify(variant("cash", unit));
 // {"tag":"cash","cash":null}
 ```
 
@@ -354,12 +354,10 @@ function chargeGateway(
   const response = sendChargeRequest(method, cents); // POSTs to the gateway, returns { status, body }
 
   if (response.status === 402) {
-    return errVariant({
-      declined: { reason: response.body.reason },
-    });
+    return errVariant("declined", { reason: response.body.reason });
   }
   if (response.status === 504) {
-    return errVariant({ timeout: unit });
+    return errVariant("timeout", unit);
   }
   return ok({ id: response.body.receiptId });
 }
@@ -392,7 +390,7 @@ declare function authorizeMethod(
 `errVariant` builds an error whose payload is itself a tagged variant, so when several errors can occur they stay discriminable by their inner tag, `chargeGateway`'s own `declined` case, from above:
 
 ```typescript
-errVariant({ declined: { reason: "insufficient_funds" } });
+errVariant("declined", { reason: "insufficient_funds" });
 // { tag: "error", error: { tag: "declined", declined: { reason: "insufficient_funds" } } }
 ```
 
@@ -420,7 +418,7 @@ type DeclinedErr = Sum<{
 }>;
 ```
 
-`errVariant` is sugar over two calls: `errVariant({ declined: {...} })` is `err(variant({ declined: {...} }))`. When the error has no tag of its own (a caught `unknown`, a bare sentinel, or a value that's already built), skip the tagging and construct it directly with `err(payload)`, the same way `ok(value)` builds the success case:
+`errVariant` is sugar over two calls: `errVariant("declined", {...})` is `err(variant("declined", {...}))`. When the error has no tag of its own (a caught `unknown`, a bare sentinel, or a value that's already built), skip the tagging and construct it directly with `err(payload)`, the same way `ok(value)` builds the success case:
 
 ```typescript
 err(caught); // { tag: "error", error: caught }: whatever caught is, stored as-is
@@ -432,7 +430,7 @@ err(caught); // { tag: "error", error: caught }: whatever caught is, stored as-i
 |---|---|
 | `ok(value)` | `Ok<T>` |
 | `err(payload)` | `Err<E>` |
-| `errVariant({ tag: payload })` | `Err<Sum<{ tag: payload }>>` |
+| `errVariant("tag", payload)` | `Err<Sum<{ tag: payload }>>` |
 | `isOk(r)` / `isErr(r)` | type guards |
 | `fromThrowable(f, mapError?)` | runs `f`, catching a throw into `Err` |
 | `allErrors(results)` | one `Ok` of every value, or an `Err` collecting **every** error |
@@ -477,7 +475,7 @@ if (isSome(c.savedMethod)) charge(c.savedMethod.some, cents); // some's payload 
 import { unwrap, unwrapOr, expect, someOr, fromNullable } from "ts-sumtype";
 
 unwrap(authorizeMethod(method));                             // PaymentMethod, or throws with the error payload
-unwrapOr(authorizeMethod(method), variant({ cash: unit }));  // the authorized method, or cash if it was declined
+unwrapOr(authorizeMethod(method), variant("cash", unit));  // the authorized method, or cash if it was declined
 expect(authorizeMethod(method), "could not authorize");      // PaymentMethod, or throws Error("could not authorize")
 ```
 
@@ -487,7 +485,7 @@ An `Option` gets there through [`someOr`](#option), which is where the absence a
 unwrap(someOr(c.savedMethod, "no saved payment method"));
 // PaymentMethod, or throws Error("no saved payment method")
 
-unwrapOr(someOr(c.savedMethod, "absent"), variant({ cash: unit }));
+unwrapOr(someOr(c.savedMethod, "absent"), variant("cash", unit));
 // the saved method, or cash as a default
 ```
 
@@ -624,19 +622,19 @@ This is the same representation this README argued against building new code aro
 
 ## Notes
 
-- **The payload key is named after the tag, and always present.** `{ tag: "cash" }` alone does not satisfy `Sum<{ cash: Unit }>`, write `variant({ cash: unit })` or `{ tag: "cash", cash: null }`.
+- **The payload key is named after the tag, and always present.** `{ tag: "cash" }` alone does not satisfy `Sum<{ cash: Unit }>`, write `variant("cash", unit)` or `{ tag: "cash", cash: null }`.
 - **`"tag"` is a reserved case name.** Its payload key would collide with the discriminant, so `Sum<{ tag: T }>` intersects the discriminant with `T` on the same field; for most `T` that leaves `tag` uninhabitable. Pick any other case name.
 - **Variance is covariant.** `Result<Receipt, never>` is assignable to `Result<Receipt, GatewayErr>`; the reverse (narrowing) is a type error.
 - **`Frozen` reaches one unrolling of a recursive type.** `Frozen<Sum<{ ... }>>` at a declaration is frozen all the way down; `Frozen<SomeRecursiveTypeDeclaredElsewhere>` leaves that type's inner occurrences mutable, see [Frozen](#frozen).
 - **Payloads must be JSON-safe** to survive a `JSON.stringify` / `JSON.parse` round-trip: functions, symbols, and `bigint` don't survive it, and neither does `undefined`, which is silently dropped from whatever key holds it. That last one is why empty payloads are typed `Unit`/`null` rather than `undefined`, see [Unit](#unit).
-- **A `const` whose initializer is narrower than its declared type** can confuse overload resolution at a generic call site:
+- **A `const` whose initializer is narrower than its declared type** can confuse inference at a generic call site. `errVariant(...)` builds the error case alone, and `pipe` reads its seed from the construction site rather than the annotation, so the step's parameter arrives as that error case:
 
   ```typescript
-  const cached: Result<number, GatewayErr> = errVariant({ declined: { reason: "insufficient_funds" } });
-  unwrapOr(cached, 0); // may fail: the generic is inferred from the construction site
+  const cached: Result<number, GatewayErr> = errVariant("declined", { reason: "insufficient_funds" });
+  pipe(cached, (n) => n + 1); // n is the error case here, not number
   ```
 
-  Give an explicit type argument (`unwrapOr<Result<number, GatewayErr>>(cached, 0)`), or let a function's declared return type produce the value, which is how ordinary code reads, since signatures name the sum type.
+  Let a function's declared return type produce the value, which is how ordinary code reads since signatures name the sum type. Annotating the step's own parameter does not help, because that is the side being checked; explicit type arguments do (`pipe<number, (n: number) => number, GatewayErr>(cached, ...)`), but they are rarely worth writing out.
 
 ---
 

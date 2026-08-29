@@ -4,7 +4,7 @@ import { ok, some, err, errVariant, none, someOr, unwrap, unwrapOr, expect as ex
 describe("unwrap", () => {
   it("unwrap", () => {
     expect(unwrap(ok(5))).toBe(5);
-    expect(() => unwrap(errVariant({ boom: null }))).toThrow();
+    expect(() => unwrap(errVariant("boom", null))).toThrow();
   });
 
   it("unwrap reports the error payload it threw on", () => {
@@ -37,7 +37,7 @@ describe("unwrap", () => {
 
   it("all short-circuits on first error", () => {
     expect(all([ok(1), ok(2)])).toEqual({ tag: "ok", ok: [1, 2] });
-    const r = all([ok(1), errVariant({ bad: null })]);
+    const r = all([ok(1), errVariant("bad", null)]);
     expect(r.tag).toBe("error");
   });
 

@@ -36,11 +36,11 @@ const rawErr = err({ http: "declined", extra: 1 }); // any payload, stored as-is
 const rawErrProbe: Sum<{ error: { http: string; extra: number } }> = rawErr;
 
 type ParseErr = Sum<{ parse: { input: string } }>;
-const parseErr = errVariant({ parse: { input: "x" } });
+const parseErr = errVariant("parse", { input: "x" });
 const parseErrProbe: Sum<{ error: ParseErr }> = parseErr;
-const unitErr = errVariant({ timeout: null });
+const unitErr = errVariant("timeout", null);
 const unitErrProbe: Sum<{ error: Sum<{ timeout: null }> }> = unitErr;
-// @ts-expect-error errVariant's payload object must have exactly one key
+// @ts-expect-error the tag is an argument, so an object is not one
 const badTagged = errVariant({ http: "declined", extra: 1 });
 
 // ── T4: fromThrowable / allErrors / toOption
@@ -48,7 +48,7 @@ const t4a = fromThrowable(() => 1);
 const t4aProbe: Result<number, unknown> = t4a;
 const t4b = fromThrowable(
   () => { throw new Error("x"); },
-  (e): ParseErr => variant({ parse: { input: String(e) } }),
+  (e): ParseErr => variant("parse", { input: String(e) }),
 );
 const t4bProbe: Result<never, ParseErr> = t4b;
 
@@ -100,7 +100,7 @@ const all3 = all([]);
 const all3Probe: Result<[], never> = all3;
 
 // ── T7: tagged() nesting
-const nested = tagged("a", "b")({ c: { x: 1 } });
+const nested = tagged("a", "b")("c", { x: 1 });
 type Nested = NestVariant<["a", "b"], Sum<{ c: { x: number } }>>;
 const nestedProbe: Nested = nested;
 
@@ -183,18 +183,21 @@ function evalExpr(e: Expr): number {
       return evalExpr(e.paren);
   }
 }
-const builtExpr: Expr = variant({ paren: variant({ num: 1 }) });
+const builtExpr: Expr = variant("paren", variant("num", 1));
 
-// variant() rejects a multi-key shape at the call site, no contextual type needed
-// @ts-expect-error variant() requires exactly one key
+// the tag is its own argument, so arity carries the one-case rule and an object is rejected
+// against `string` rather than by a constraint
+// @ts-expect-error an object is not a tag
 const badVariant = variant({ a: 1, b: 2 });
+// @ts-expect-error a case takes one payload
+const extraArg = variant("a", 1, 2);
 
 // Sum<{ a: X; b: Y }> and Sum<{ a: X }> | Sum<{ b: Y }> are the same type --
 // a whole table fanned out in one call, or individually-declared cases joined with `|`
 type Fanned = Sum<{ a: number; b: string }>;
 type Joined = Sum<{ a: number }> | Sum<{ b: string }>;
-const fannedAsJoined: Joined = variant({ a: 1 }) as Fanned;
-const joinedAsFanned: Fanned = variant({ b: "x" }) as Joined;
+const fannedAsJoined: Joined = variant("a", 1) as Fanned;
+const joinedAsFanned: Fanned = variant("b", "x") as Joined;
 
 // ── T12: pipe -- the two Result steps from T9, threaded through pipe instead of
 // early-return, plus a raw seed
@@ -278,7 +281,7 @@ if (term.tag === "stamp") {
 }
 
 // construction reads the same: a mutable literal is assignable to a frozen payload
-const builtTerm: Term = variant({ seq: { left: variant({ id: null }), right: variant({ id: null }) } });
+const builtTerm: Term = variant("seq", { left: variant("id", null), right: variant("id", null) });
 
 // `Frozen<Term>` is `Term`, so a recursive traversal over a frozen ADT still type checks
 function countTerms(t: Term): number {
@@ -382,7 +385,7 @@ function t14MapOk<T, U, E>(r: Result<T, E>, f: (t: T) => U): Result<U, E> {
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.
 type Expr15 = Sum<{ atom: Unit; wrap: Expr15; twice: Expr15 }>;
-const built15: Expr15 = variant({ wrap: variant({ atom: null }) });
+const built15: Expr15 = variant("wrap", variant("atom", null));
 function depth15(x: Expr15): number {
   switch (x.tag) {
     case "atom":

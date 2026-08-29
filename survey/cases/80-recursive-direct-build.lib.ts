@@ -8,7 +8,7 @@ import { type Sum, type Unit, variant } from "ts-sumtype";
 
 type Expr = Sum<{ atom: Unit; wrap: Expr; twice: Expr }>;
 
-export const built: Expr = variant({ wrap: variant({ atom: null }) });
+export const built: Expr = variant("wrap", variant("atom", null));
 
 export function depth(x: Expr): number {
   switch (x.tag) {

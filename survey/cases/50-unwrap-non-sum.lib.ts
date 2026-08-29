@@ -7,6 +7,6 @@
 
 import { unwrap, variant } from "ts-sumtype";
 
-const v = variant({ count: 3 });
+const v = variant("count", 3);
 
 export const n = unwrap(v).toFixed(2);

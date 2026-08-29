@@ -15,7 +15,7 @@ type AnyResult<T, E> = Ok<T> | ErrShape<E>;
 
 /** Builds the success case carrying `value`. */
 export function ok<const T>(value: T): Ok<T> {
-  return variant({ ok: value });
+  return variant("ok", value);
 }
 
 /** Type guard: true when `r` is the success case, narrowing to `Ok<T>`. */
@@ -25,7 +25,7 @@ export function isOk<T, E>(r: Result<T, E>): r is Ok<T> {
 
 /** Builds the failure case carrying `payload` directly. */
 export function err<const E>(payload: E): Err<E> {
-  return variant({ error: payload }) as Err<E>;
+  return variant("error", payload) as Err<E>;
 }
 
 /** Builds an `Err` whose payload is itself a `Sum` case: `errVariant({ tag: payload })`. */

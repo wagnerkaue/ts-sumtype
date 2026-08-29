@@ -6,6 +6,6 @@
 
 import { errVariant } from "ts-sumtype";
 
-const e = errVariant({ parse: { input: "x" } });
+const e = errVariant("parse", { input: "x" });
 
 export const input = e.parse.input;

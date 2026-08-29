@@ -76,14 +76,14 @@
         "overload": false
       }
     },
-    "variant-two-keys": {
+    "variant-object-as-tag": {
       "anomaly": null,
       "lib": {
         "count": 1,
         "codes": [
           "TS2345"
         ],
-        "chars": 92,
+        "chars": 93,
         "lines": 1,
         "depth": 0,
         "leaks": [],
@@ -250,14 +250,14 @@
         "overload": false
       }
     },
-    "variant-empty-object": {
+    "variant-extra-argument": {
       "anomaly": null,
       "lib": {
         "count": 1,
         "codes": [
-          "TS2345"
+          "TS2554"
         ],
-        "chars": 69,
+        "chars": 34,
         "lines": 1,
         "depth": 0,
         "leaks": [],
@@ -268,9 +268,9 @@
       "ctl": {
         "count": 1,
         "codes": [
-          "TS2739"
+          "TS2554"
         ],
-        "chars": 74,
+        "chars": 32,
         "lines": 1,
         "depth": 0,
         "leaks": [],

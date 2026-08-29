@@ -63,16 +63,19 @@ export type Frozen<T> = T extends Primitive | Opaque
             : { readonly [K in keyof T]: Frozen<T[K]> }
           : { readonly [K in keyof T]: Frozen<T[K]> };
 
-/** Rejects `Shape` unless it has exactly one key: the constraint `variant()`/`tagged()` build against. */
-type SingleKeyed<Shape extends Record<string, unknown>, K = keyof Shape> =
-  K extends keyof Shape ? ([Exclude<keyof Shape, K>] extends [never] ? Shape : never) : never;
-
-/** Builds the one-case `Sum` for a single-key object: `variant({ paren: expr })`. */
-export function variant<const Shape extends Record<string, unknown>>(
-  shape: Shape & SingleKeyed<Shape>,
-): Sum<Shape> {
-  const tag = Object.keys(shape)[0] as keyof Shape;
-  return { tag, ...(shape as object) } as Sum<Shape>;
+/**
+ * Builds the one-case `Sum` for a tag and its payload: `variant("paren", expr)`.
+ *
+ * The tag is its own argument rather than the single key of an object. Arity then carries the
+ * rule that a case has exactly one tag, so there is nothing to enforce in the type system and
+ * nothing for a failed constraint to report: passing the wrong thing is an ordinary argument
+ * error against `string`.
+ */
+export function variant<const K extends string, const P>(tag: K, payload: P): Sum<Record<K, P>>;
+/** Builds a case with no payload: `variant("cash")` is `variant("cash", unit)`. */
+export function variant<const K extends string>(tag: K): Sum<Record<K, Unit>>;
+export function variant(tag: string, payload: unknown = unit): unknown {
+  return { tag, [tag]: payload };
 }
 
 /** Type guard: true when `v.tag` is one of `tags`, narrowing `v` to that member. */
@@ -99,16 +102,18 @@ export type NestVariant<Tags extends readonly string[], Inner> =
 
 /** Builds a constructor that nests every case it makes under the given outer tags, in order. */
 export function tagged<const Prefixes extends readonly string[]>(...prefixes: Prefixes) {
-  function build<const Shape extends Record<string, unknown>>(
-    shape: Shape & SingleKeyed<Shape>,
-  ): NestVariant<Prefixes, Sum<Shape>> {
-    const tag = Object.keys(shape)[0];
-    let result: unknown = { tag, ...(shape as object) };
+  function build<const K extends string, const P>(
+    tag: K,
+    payload: P,
+  ): NestVariant<Prefixes, Sum<Record<K, P>>>;
+  function build<const K extends string>(tag: K): NestVariant<Prefixes, Sum<Record<K, Unit>>>;
+  function build(tag: string, payload: unknown = unit): unknown {
+    let result: unknown = { tag, [tag]: payload };
     for (let i = prefixes.length - 1; i >= 0; i--) {
       const prefix = prefixes[i];
       result = { tag: prefix, [prefix]: result };
     }
-    return result as NestVariant<Prefixes, Sum<Shape>>;
+    return result;
   }
   return build;
 }

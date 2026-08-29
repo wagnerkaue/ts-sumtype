@@ -10,12 +10,12 @@ export type Option<T> = Some<T> | None;
 
 /** Builds the present case carrying `value`. */
 export function some<const T>(value: T): Option<T> {
-  return variant({ some: value });
+  return variant("some", value);
 }
 
 /** Builds the absent case. Returns a fresh object each call, so compare by tag, not `===`. */
 export function none<T = never>(): Option<T> {
-  return variant({ none: unit });
+  return variant("none", unit);
 }
 
 /** Type guard: true when `o` is the present case, narrowing to `Some<T>`. */

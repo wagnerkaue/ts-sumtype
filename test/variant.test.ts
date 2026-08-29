@@ -3,9 +3,9 @@ import { variant, isVariant, type Sum } from "../src/index";
 
 describe("isVariant", () => {
   type ABC = Sum<{ a: number; b: string; c: null }>;
-  const a = variant({ a: 1 }) as ABC;
-  const b = variant({ b: "two" }) as ABC;
-  const c = variant({ c: null }) as ABC;
+  const a = variant("a", 1) as ABC;
+  const b = variant("b", "two") as ABC;
+  const c = variant("c", null) as ABC;
 
   it("matches a single tag", () => {
     expect(isVariant(a, "a")).toBe(true);

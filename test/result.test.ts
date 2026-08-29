@@ -14,15 +14,15 @@ describe("result", () => {
     });
   });
 
-  it("errVariant({ parse: { input } }) deep-equals nested structure", () => {
-    expect(errVariant({ parse: { input: "x" } })).toEqual({
+  it("errVariant(\"parse\", { input }) deep-equals nested structure", () => {
+    expect(errVariant("parse", { input: "x" })).toEqual({
       tag: "error",
       error: { tag: "parse", parse: { input: "x" } },
     });
   });
 
-  it("errVariant({ timeout: null }) deep-equals unit-tagged error", () => {
-    expect(errVariant({ timeout: null })).toEqual({
+  it("errVariant(\"timeout\", null) deep-equals unit-tagged error", () => {
+    expect(errVariant("timeout", null)).toEqual({
       tag: "error",
       error: { tag: "timeout", timeout: null },
     });
@@ -37,7 +37,7 @@ describe("result", () => {
     expect(fromThrowable(() => 1)).toEqual({ tag: "ok", ok: 1 });
     const r = fromThrowable(
       () => { throw new Error("x"); },
-      (e) => variant({ mapped: String(e) }),
+      (e) => variant("mapped", String(e)),
     );
     expect(r).toEqual({ tag: "error", error: { tag: "mapped", mapped: "Error: x" } });
   });
@@ -47,7 +47,7 @@ describe("result", () => {
   });
 
   it("allErrors collects all error payloads", () => {
-    const result = allErrors([ok(1), errVariant({ a: null }), errVariant({ b: null })]);
+    const result = allErrors([ok(1), errVariant("a", null), errVariant("b", null)]);
     expect(result).toEqual({
       tag: "error",
       error: [
@@ -59,14 +59,14 @@ describe("result", () => {
 
   it("toOption converts correctly", () => {
     expect(toOption(ok(1))).toEqual({ tag: "some", some: 1 });
-    expect(toOption(errVariant({ e: null }))).toEqual({ tag: "none", none: null });
+    expect(toOption(errVariant("e", null))).toEqual({ tag: "none", none: null });
   });
 
   it("early-return sequences Result steps without a fluent helper", () => {
     function checkout(input: string) {
-      const parsed = input.length > 0 ? ok(input.length) : errVariant({ empty: null });
+      const parsed = input.length > 0 ? ok(input.length) : errVariant("empty", null);
       if (isVariant(parsed, "error")) return parsed;
-      const doubled = parsed.ok > 10 ? errVariant({ too_long: null }) : ok(parsed.ok * 2);
+      const doubled = parsed.ok > 10 ? errVariant("too_long", null) : ok(parsed.ok * 2);
       if (isVariant(doubled, "error")) return doubled;
       return ok(doubled.ok);
     }
