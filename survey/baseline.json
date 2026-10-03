@@ -890,6 +890,116 @@
         "overload": false
       }
     },
+    "flow-step-mismatch": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 168,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 74,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "flow-too-many-steps": {
+      "anomaly": "plain TypeScript accepts this; only the library rejects it",
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2554"
+        ],
+        "chars": 34,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "flow-in-generic-fn": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "flow-undeclared": {
+      "anomaly": null,
+      "lib": {
+        "count": 2,
+        "codes": [
+          "TS18046"
+        ],
+        "chars": 59,
+        "lines": 2,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS7006"
+        ],
+        "chars": 47,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
     "recursive-direct-build": {
       "anomaly": null,
       "lib": {

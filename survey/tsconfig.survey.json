@@ -10,7 +10,9 @@
       "ts-sumtype/option": ["../dist/option.d.ts"],
       "ts-sumtype/unwrap": ["../dist/unwrap.d.ts"],
       "ts-sumtype/adapt": ["../dist/adapt.d.ts"],
-      "ts-sumtype/pipe": ["../dist/pipe.d.ts"]
+      "ts-sumtype/pipe": ["../dist/pipe.d.ts"],
+      "ts-sumtype/entry": ["../dist/entry.d.ts"],
+      "ts-sumtype/flow": ["../dist/flow.d.ts"]
     },
     "noEmit": true,
     "noUnusedLocals": false,

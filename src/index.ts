@@ -4,3 +4,5 @@ export * from "./option";
 export * from "./unwrap";
 export * from "./adapt";
 export * from "./pipe";
+export * from "./entry";
+export * from "./flow";

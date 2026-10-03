@@ -2,6 +2,8 @@ import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, allErrors, toOption,
   mapError, wrapError,
+  flow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
+  entries, type Entry,
   type Ok, type Err, type Result, type At, type Wrapped,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
@@ -409,6 +411,61 @@ function t17Wrap<T, E, const K extends string>(r: Result<T, E>, tag: K): Result<
 const t17Mapped: Result<number, string> = mapError(t17Fallible, (e) => `${e}!`);
 declare const t17Located: At<string, "bad">;
 const t17LocatedError: "bad" = t17Located.error;
+
+// ── T18: flow -- a chain built once on a declared constant, each step inferring from it
+type T18ListErr = Sum<{ empty: Unit }>;
+const t18Listed: (items: readonly string[]) => Result<string, T18ListErr> = flow(
+  rejectIf((items) => items.length === 0, "empty"),
+  map((items) => items.join(", ")),
+);
+
+// the chain's error is every step's error; a total step wrapped by `attempt` adds no case
+type T18Err = Sum<{ parse: ParseErr; tooBig: Unit }>;
+const t18Parsed: Step<string, number, T18Err> = flow(
+  attempt(parseId, "parse"),
+  rejectIf((n) => n > 100, "tooBig"),
+  attempt(map((n) => n * 2), "double"),
+);
+
+// a chain of steps that can't fail can't fail either, so `.ok` reads without narrowing
+const t18Total = flow(map((n: number) => n + 1), map((n) => `${n}`));
+const t18TotalValue: string = t18Total(1).ok;
+
+// an inline step returning only `ok(...)` adds no error case
+const t18OkOnly: Step<number, number, never> = flow((n: number) => ok(n + 1));
+
+// a step taking the wrong input is reported on the step before it: the annotated parameter fixes
+// the type between them, and the earlier step is the one that fails to produce it
+const t18Mismatch: Step<string, number, ParseErr> = flow(
+  // @ts-expect-error parseId produces a number, but the next step takes a string
+  parseId,
+  map((id: string) => id.length),
+);
+
+const t18Dotted: Step<readonly string[], readonly string[], Sum<{ dotInSegment: string }>> = rejectWith(
+  (path) => fromNullable(path.find((segment) => segment.includes("."))),
+  "dotInSegment",
+);
+const t18Prepended: Step<readonly number[], readonly number[], never> = prepend([0]);
+
+// tryFlatMap locates a failure by the entry's key, and a total step locates nothing
+type T18ItemErr = Sum<{ item: At<string, "two"> }>;
+const t18Items: Step<readonly Entry<number>[], readonly number[], T18ItemErr> = tryFlatMap(
+  ({ payload }) => (payload === 2 ? err("two") : ok([payload])),
+  "item",
+);
+const t18AllItems = tryFlatMap(map(({ payload }: Entry<number>) => [payload]), "item");
+const t18AllItemsValue: readonly number[] = t18AllItems([]).ok;
+
+// entries keeps each key paired with its own payload type
+const t18Entries = entries({ a: 1, b: "x" });
+const t18Entry: { readonly key: "a"; readonly payload: 1 } | { readonly key: "b"; readonly payload: "x" } =
+  t18Entries[0];
+
+// and flow composes steps whose types are still generic
+function t18Compose<A, B, C, E>(f: Step<A, B, E>, g: Step<B, C, E>): Step<A, C, E> {
+  return flow(f, g);
+}
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.
