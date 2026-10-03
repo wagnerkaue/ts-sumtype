@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { ok, some, none, someOr, variant, unwrap, fromFlat, tryFlow, map, rejectIf, tryOver, tryMatch } = require("../dist/index.cjs");
+const { ok, some, none, someOr, variant, unwrap, fromFlat, flow, tryFlow, map, rejectIf, tryOver, tryMatch } = require("../dist/index.cjs");
 const { tryFlow: flowEntry, map: mapEntry } = require("../dist/flow.cjs");
 
 assert.equal(unwrap(ok(2)), 2);
@@ -11,6 +11,7 @@ assert.deepEqual(fromFlat("type")({ type: "video", duration: 4 }), {
   video: { duration: 4 },
 });
 
+assert.equal(flow((n) => n + 1, (n) => n * 10)(2), 30);
 const positive = tryFlow(rejectIf((n) => n <= 0, "notPositive"), map((n) => n * 2));
 assert.deepEqual(positive(2), { tag: "ok", ok: 4 });
 assert.deepEqual(positive(0), { tag: "error", error: { tag: "notPositive", notPositive: null } });

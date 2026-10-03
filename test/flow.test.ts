@@ -1,8 +1,20 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   ok, err, errVariant, some, none, entries,
-  tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap,
+  flow, tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap,
 } from "../src/index";
+
+describe("flow", () => {
+  it("composes left to right", () => {
+    expect(flow((n: number) => n + 1, (n) => n * 10)(2)).toBe(30);
+  });
+
+  it("passes a Result on as it is", () => {
+    const sign = flow((n: number) => (n < 0 ? err("negative") : ok(n)), (r) => r.tag);
+    expect(sign(-1)).toBe("error");
+    expect(sign(1)).toBe("ok");
+  });
+});
 
 describe("tryFlow", () => {
   it("passes each step's value to the next", () => {

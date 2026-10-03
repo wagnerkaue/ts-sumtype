@@ -6,16 +6,42 @@ import { type Entry } from "./entry";
 /** One link of a chain: takes the previous link's value and succeeds with the next, or fails. */
 export type Step<A, B, E> = (input: A) => Result<B, E>;
 
+/** Composes functions left to right, each receiving the previous one's return value as it is. */
+export function flow<A, B>(f1: (a: A) => B): (a: A) => B;
+export function flow<A, B, C>(f1: (a: A) => B, f2: (b: B) => C): (a: A) => C;
+export function flow<A, B, C, D>(f1: (a: A) => B, f2: (b: B) => C, f3: (c: C) => D): (a: A) => D;
+export function flow<A, B, C, D, E>(
+  f1: (a: A) => B,
+  f2: (b: B) => C,
+  f3: (c: C) => D,
+  f4: (d: D) => E,
+): (a: A) => E;
+export function flow<A, B, C, D, E, F>(
+  f1: (a: A) => B,
+  f2: (b: B) => C,
+  f3: (c: C) => D,
+  f4: (d: D) => E,
+  f5: (e: E) => F,
+): (a: A) => F;
+export function flow<A, B, C, D, E, F, G>(
+  f1: (a: A) => B,
+  f2: (b: B) => C,
+  f3: (c: C) => D,
+  f4: (d: D) => E,
+  f5: (e: E) => F,
+  f6: (f: F) => G,
+): (a: A) => G;
+export function flow(...fs: readonly ((input: unknown) => unknown)[]): (input: unknown) => unknown {
+  return (input) => {
+    let value = input;
+    for (const f of fs) value = f(value);
+    return value;
+  };
+}
+
 /**
- * Composes steps left to right into one step that stops at the first error. The chain is built
- * once, assigned to a constant with a declared type, and each step infers its types from it:
- *
- * ```ts
- * const listed: (items: readonly string[]) => Result<string, Sum<{ empty: Unit }>> = tryFlow(
- *   rejectIf((items) => items.length === 0, "empty"),
- *   map((items) => items.join(", ")),
- * );
- * ```
+ * Composes steps left to right into one step that stops at the first error. Assigned to a constant
+ * with a declared type, each step takes its types from that declaration.
  */
 export function tryFlow<A, B, E1>(s1: Step<A, B, E1>): Step<A, B, E1>;
 export function tryFlow<A, B, C, E1, E2>(s1: Step<A, B, E1>, s2: Step<B, C, E2>): Step<A, C, E1 | E2>;
@@ -47,8 +73,7 @@ export function tryFlow<A, B, C, D, F, G, H, E1, E2, E3, E4, E5, E6>(
 ): Step<A, H, E1 | E2 | E3 | E4 | E5 | E6>;
 export function tryFlow(...steps: readonly Step<unknown, unknown, unknown>[]): Step<unknown, unknown, unknown> {
   return (input) => {
-    // A loop, not `reduce`: that adds two stack frames (`reduce` and its callback) to every chain a
-    // recursive step passes through, and recursion in this style already runs deep.
+    // A loop, not `reduce`, which adds two stack frames per chain to deep recursion.
     let result: Result<unknown, unknown> = ok(input);
     for (const step of steps) {
       if (isErr(result)) return result;

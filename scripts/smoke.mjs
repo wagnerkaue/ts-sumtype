@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, tryFlow, map, rejectIf, tryOver, tryMatch } from "../dist/index.js";
+import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, flow, tryFlow, map, rejectIf, tryOver, tryMatch } from "../dist/index.js";
 
 function pipeline(x) {
   const doubled = x > 0 ? ok(x * 10) : errVariant("neg", null);
@@ -20,6 +20,7 @@ assert.deepEqual(httpErr("http", { status: 500 }), {
 });
 
 
+assert.equal(flow((n) => n + 1, (n) => n * 10)(2), 30);
 const positive = tryFlow(rejectIf((n) => n <= 0, "notPositive"), map((n) => n * 2));
 assert.deepEqual(positive(2), { tag: "ok", ok: 4 });
 assert.deepEqual(positive(0), { tag: "error", error: { tag: "notPositive", notPositive: null } });

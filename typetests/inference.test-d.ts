@@ -2,7 +2,7 @@ import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   mapError, wrapError,
-  tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
+  flow, tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
   entries, type Entry,
   tryOver, over, tryMatch,
   type Ok, type Err, type Result, type At, type Wrapped,
@@ -526,6 +526,26 @@ const t20Chained: Step<string, number, T20Err> = tryFlow(
     empty: () => ok(0),
   }),
 );
+
+// ── T21: flow: plain functions composed left to right, typed from the declared constant
+type T21Path = Sum<{ here: Unit; into: { key: string; rest: T21Path } }>;
+declare const t21Dotted: (path: T21Path) => string;
+const t21Identifier: (path: T21Path) => string = flow(t21Dotted, (text) => (text === "" ? "#" : text));
+const t21Length: (path: T21Path) => number = flow((path) => t21Dotted(path), (text) => text.length);
+
+// a Result reaches the next function as a Result
+const t21Parsed: (path: T21Path) => Result<number, ParseErr> = flow(t21Dotted, parseId);
+const t21Outcome: (raw: string) => "ok" | "error" = flow(parseId, (r) => r.tag);
+
+const t21Mismatch: (path: T21Path) => number = flow(
+  // @ts-expect-error t21Dotted produces a string, but the next function takes a number
+  t21Dotted,
+  (n: number) => n + 1,
+);
+
+function t21Compose<A, B, C>(f: (a: A) => B, g: (b: B) => C): (a: A) => C {
+  return flow(f, g);
+}
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.

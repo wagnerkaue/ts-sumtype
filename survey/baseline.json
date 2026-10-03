@@ -895,6 +895,64 @@
         "overload": false
       }
     },
+    "flow-step-mismatch": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 156,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 74,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "flow-for-tryflow": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2365"
+        ],
+        "chars": 126,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2365"
+        ],
+        "chars": 67,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
     "wraperror-missing-case": {
       "anomaly": null,
       "lib": {
