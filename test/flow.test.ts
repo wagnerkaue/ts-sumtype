@@ -1,7 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  ok, err, errVariant, some, none, entries,
-  flow, tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap,
+  ok, err, errVariant, some, none, entries, variant,
+  flow, tryFlow, map, lazy, prepend, attempt, rejectWith, rejectIf, tryFlatMap, match, tryMatch,
+  type Step, type Sum,
 } from "../src/index";
 
 describe("flow", () => {
@@ -97,5 +98,27 @@ describe("entries", () => {
       { key: "code", payload: 1 },
       { key: "name", payload: 2 },
     ]);
+  });
+});
+
+type Nest = Sum<{ leaf: number; wrap: Nest }>;
+
+const depth: Step<Nest, number, never> = tryMatch({
+  leaf: map(() => 0),
+  wrap: tryFlow(lazy(() => depth), map((d) => d + 1)),
+});
+
+const doubled: (nest: Nest) => number = match({
+  leaf: (n) => n,
+  wrap: flow(lazy(() => doubled), (n) => n * 2),
+});
+
+describe("lazy", () => {
+  it("lets a chain of steps refer to the constant it is part of", () => {
+    expect(depth(variant("wrap", variant("wrap", variant("leaf", 7))))).toEqual(ok(2));
+  });
+
+  it("does the same for plain functions", () => {
+    expect(doubled(variant("wrap", variant("wrap", variant("leaf", 3))))).toBe(12);
   });
 });

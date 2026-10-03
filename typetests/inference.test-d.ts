@@ -2,7 +2,7 @@ import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   mapError, wrapError,
-  flow, tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
+  flow, tryFlow, map, lazy, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
   entries, type Entry,
   tryOver, over, match, tryMatch,
   type Ok, type Err, type Result, type At, type Wrapped,
@@ -585,6 +585,32 @@ const t22UnknownOut: (s: Sum<{ a: number; b: number }>) => unknown = match({
 const t22UnknownAsNumber: (s: Sum<{ a: number; b: number }>) => number = match({
   a: (n: number): unknown => t22Unknown(n),
   b: (n: number): unknown => t22Unknown(n),
+});
+
+// ── T23: lazy: a chain refers to a constant declared after it
+type T23Shape = Sum<{ scalar: Unit; object: readonly Entry<T23Shape>[] }>;
+type T23Column = readonly string[];
+type T23Err = Sum<{ object: T23ObjectErr }>;
+type T23ObjectErr = Sum<{ noFields: Unit; field: At<string, T23Err> }>;
+
+const t23FieldColumns: Step<Entry<T23Shape>, readonly T23Column[], T23Err> = tryFlow(
+  tryOver("payload", lazy(() => t23Columns)),
+  map(({ key, payload }) => payload.map((path) => [key, ...path])),
+);
+const t23ObjectColumns: Step<readonly Entry<T23Shape>[], readonly T23Column[], T23ObjectErr> = tryFlow(
+  rejectIf((fields) => fields.length === 0, "noFields"),
+  tryFlatMap(t23FieldColumns, "field"),
+);
+const t23Columns: Step<T23Shape, readonly T23Column[], T23Err> = tryMatch({
+  scalar: map(() => [[]]),
+  object: t23ObjectColumns,
+});
+
+type T23Nest = Sum<{ leaf: number; wrap: T23Nest }>;
+const t23Doubled: (nest: T23Nest) => number = match({
+  leaf: (n) => n,
+  // @ts-expect-error without lazy, the constant is read while it is being declared
+  wrap: flow(t23Doubled, (n) => n * 2),
 });
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or

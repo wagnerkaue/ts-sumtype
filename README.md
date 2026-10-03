@@ -654,7 +654,7 @@ parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
 ```typescript
-import { tryFlow, map, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Entry, type Result, type Step, type Sum, type Unit } from "ts-sumtype";
+import { tryFlow, map, lazy, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Entry, type Step, type Sum, type Unit } from "ts-sumtype";
 
 type Shape = Sum<{ scalar: Unit; object: readonly Entry<Shape>[] }>;
 type Column = readonly string[];
@@ -662,12 +662,8 @@ type Column = readonly string[];
 type ColumnsErr = Sum<{ object: ObjectErr }>;
 type ObjectErr = Sum<{ noFields: Unit; field: At<string, ColumnsErr> }>;
 
-function columns(shape: Shape): Result<readonly Column[], ColumnsErr> {
-  return columnsByTag(shape);
-}
-
 const fieldColumns: Step<Entry<Shape>, readonly Column[], ColumnsErr> = tryFlow(
-  tryOver("payload", columns),
+  tryOver("payload", lazy(() => columns)),
   map(({ key, payload }) => payload.map((path) => [key, ...path])),
 );
 
@@ -676,7 +672,7 @@ const objectColumns: Step<readonly Entry<Shape>[], readonly Column[], ObjectErr>
   tryFlatMap(fieldColumns, "field"),
 );
 
-const columnsByTag: Step<Shape, readonly Column[], ColumnsErr> = tryMatch({
+const columns: Step<Shape, readonly Column[], ColumnsErr> = tryMatch({
   scalar: map(() => [[]]),
   object: objectColumns,
 });
@@ -691,7 +687,7 @@ An order whose `shipping` field is an object with no fields fails with an error 
 
 None of these functions is told where it is. Each builds its result from its children's results, and the location is added on the way back up, one level per `tryFlatMap`.
 
-A chain reads its functions when it's built, so the constants are declared children first, and the recursion goes through a `function` declaration. `columns` is hoisted, so `fieldColumns` can refer to it before the line that defines it. A `const` there would not be assigned yet.
+A chain reads its functions when it's built, so the constants are declared children first. `fieldColumns` refers back to `columns`, declared after it, through `lazy(() => columns)`, which looks `columns` up each time the step runs. Without `lazy`, the compiler rejects the reference: `Block-scoped variable 'columns' used before its declaration`.
 
 ### Steps at a glance
 

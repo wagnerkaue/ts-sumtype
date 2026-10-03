@@ -88,6 +88,11 @@ export function map<A, B>(f: (input: A) => B): Step<A, B, never> {
   return (input) => ok(f(input));
 }
 
+/** Looks up `get()` each time it's called, so a chain can refer to a constant declared after it. */
+export function lazy<A, B>(get: () => (input: A) => B): (input: A) => B {
+  return (input) => get()(input);
+}
+
 /** Puts `first` ahead of the list it is given. */
 export function prepend<T>(first: readonly T[]): (rest: readonly T[]) => readonly T[] {
   return (rest) => [...first, ...rest];
