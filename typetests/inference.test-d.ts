@@ -4,6 +4,7 @@ import {
   mapError, wrapError,
   flow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
   entries, type Entry,
+  zoom, over,
   type Ok, type Err, type Result, type At, type Wrapped,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
@@ -466,6 +467,25 @@ const t18Entry: { readonly key: "a"; readonly payload: 1 } | { readonly key: "b"
 function t18Compose<A, B, C, E>(f: Step<A, B, E>, g: Step<B, C, E>): Step<A, C, E> {
   return flow(f, g);
 }
+
+// ── T19: zoom and over -- one part of a structure updated, the whole rebuilt around it
+type T19Order = { code: string; payment: { card: { number: string } } };
+type T19Parsed = { code: string; payment: { card: { number: number } } };
+const t19Parse: Step<T19Order, T19Parsed, never> = zoom("payment", zoom("card", zoom("number", map(Number))));
+
+// the step's error passes through as the zoomed step's own
+const t19Fallible: Step<T19Order, T19Order, ParseErr> = zoom("code", (code: string) =>
+  code === "" ? errVariant("parse", { input: code }) : ok(code),
+);
+
+// a tuple keeps its other positions
+type T19Pair = readonly [string, number];
+const t19Bumped: Step<T19Pair, readonly [string, string], never> = zoom(1, map((n) => `${n + 1}`));
+const t19Over: (pair: T19Pair) => readonly [string, boolean] = over(1, (n) => n > 0);
+
+// a wrong key is reported where it is written
+// @ts-expect-error `crad` is not a key of the payment
+const t19Typo: Step<T19Order, T19Parsed, never> = zoom("payment", zoom("crad", zoom("number", map(Number))));
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.

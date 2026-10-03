@@ -6,3 +6,4 @@ export * from "./adapt";
 export * from "./pipe";
 export * from "./entry";
 export * from "./flow";
+export * from "./zoom";

@@ -890,6 +890,36 @@
         "overload": false
       }
     },
+    "zoom-wrong-key": {
+      "anomaly": null,
+      "lib": {
+        "count": 2,
+        "codes": [
+          "TS2322",
+          "TS2345"
+        ],
+        "chars": 520,
+        "lines": 5,
+        "depth": 3,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2339"
+        ],
+        "chars": 72,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
     "flow-step-mismatch": {
       "anomaly": null,
       "lib": {
