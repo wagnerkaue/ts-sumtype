@@ -11,7 +11,7 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [Composing steps](#composing-steps) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
 import { variant, type Sum, type Unit } from "ts-sumtype";
@@ -116,7 +116,7 @@ That symmetry is what reading the union looks like afterward: `method.cash`, `me
 
 This only works because the tag is a string. Whatever discriminates the union has to double as the payload's key, and a key has to be a string (or symbol) to begin with. A boolean can't be reused as a name the way `"cash"` and `"paypal"` already are the words for what they name. So the string requirement isn't a restriction bolted on afterward; it falls directly out of wanting the tag value and the payload key to be the same thing. [Result](#result), below, runs into this from the other direction: the usual `{ ok: true }` discriminant can't take this fix at all.
 
-This union is completely determined by one thing: a mapping from case name to payload type. Write that mapping directly, and the whole union (tag, payload key, and all) is generated from it. `Sum<Cases>` is exactly this, generalized, and `variant(shape)` builds one member of it from a single `{ tag: payload }` pair:
+This union is completely determined by one thing: a mapping from case name to payload type. Write that mapping directly, and the whole union (tag, payload key, and all) is generated from it. `Sum<Cases>` is exactly this, generalized, and `variant(tag, payload)` builds one member of it:
 
 ```typescript
 import { variant, unit, type Sum, type Unit } from "ts-sumtype";
@@ -434,6 +434,8 @@ err(caught); // { tag: "error", error: caught }: whatever caught is, stored as-i
 | `isOk(r)` / `isErr(r)` | type guards |
 | `fromThrowable(f, mapError?)` | runs `f`, catching a throw into `Err` |
 | `toOption(r)` | `Ok → Some`, `Err → None` |
+| `mapError(r, f)` | `Err` with its error transformed by `f` |
+| `wrapError(r, "tag")` | `Err` with its error wrapped as a `tag` case; nothing added when `r` can't fail |
 
 ---
 
@@ -492,6 +494,196 @@ unwrapOr(someOr(c.savedMethod, "absent"), variant("cash", unit));
 fromNullable(raw.savedMethod);           // Option<PaymentMethod>
 fromNullable(raw.savedMethod, "no method"); // Result<PaymentMethod, "no method">
 ```
+
+---
+
+## Composing steps
+
+Early return, the default style above, is clear for a function of two or three steps. The functions in this section are built differently: each is a chain of *steps*, small functions that each return a `Result`, composed once and given a name. Every function has an error type of its own, and it wraps the errors of the functions it calls under tags of that type, so a failure reads as the path to where it happened.
+
+### A step that can't fail
+
+Every step returns a `Result`, including one that can't fail, whose error type is `never`. `Err<never>` is `never`, so `Result<number, never>` is just `Ok<number>`, and `.ok` reads without a check:
+
+```typescript
+function processorFee(method: PaymentMethod): Result<number, never> {
+  return ok(method.tag === "creditCard" ? 0.024 : 0);
+}
+
+processorFee(method).ok; // number, no check needed
+```
+
+If `processorFee` later gains an error, every one of those reads stops compiling. That list of errors is the list of callers that now have to handle it.
+
+### An error per function
+
+`authorizeMethod` and `chargeGateway` both have a `declined` case. A checkout that calls both and returns `AuthorizeErr | GatewayErr` can't say which of them declined. Give `checkout` an error type of its own, with one case per function it calls, and wrap each function's error under its case with `wrapError`:
+
+```typescript
+import { wrapError, isErr, type Result, type Sum } from "ts-sumtype";
+
+type Order = { method: PaymentMethod; cents: number };
+type CheckoutErr = Sum<{ authorize: AuthorizeErr; charge: GatewayErr }>;
+
+function checkout(order: Order): Result<Receipt, CheckoutErr> {
+  const authorized = wrapError(authorizeMethod(order.method), "authorize");
+  if (isErr(authorized)) return authorized;
+  return wrapError(chargeGateway(authorized.ok, order.cents), "charge");
+}
+```
+
+A failure now says where it happened: `error.authorize.declined.reason`. `mapError(result, f)` is the general form, transforming the error with any function. Wrapping a result that can't fail adds no case: `wrapError(processorFee(method), "fee")` is still `Result<number, never>`.
+
+### flow
+
+`flow(step1, step2, ...)` composes steps into one step that stops at the first error. It builds the chain, it doesn't run it: assign it to a constant with a declared type, and each step takes its types from that declaration.
+
+```typescript
+import { flow, map, rejectIf, rejectWith, fromNullable, type Result, type Sum, type Unit } from "ts-sumtype";
+
+type CardNumberErr = Sum<{ empty: Unit; notADigit: string; checksum: Unit }>;
+
+const cardNumber: (raw: string) => Result<string, CardNumberErr> = flow(
+  map((raw) => raw.replaceAll(" ", "")),
+  rejectIf((digits) => digits === "", "empty"),
+  rejectWith((digits) => fromNullable(digits.match(/\D/)?.[0]), "notADigit"),
+  rejectIf((digits) => !luhn(digits), "checksum"),
+);
+
+cardNumber("4111 1111 1111 1111"); // { tag: "ok", ok: "4111111111111111" }
+cardNumber("4111-1111");           // { tag: "error", error: { tag: "notADigit", notADigit: "-" } }
+```
+
+Without the declaration, nothing tells the first step what `raw` is, and the compiler says so: `'raw' is of type 'unknown'`. `Step<A, B, E>`, which is `(input: A) => Result<B, E>`, is a shorter way to write that declaration.
+
+Each step takes its function first and its tag last:
+
+- `map(f)` turns a plain function into a step that can't fail.
+- `rejectIf(fails, tag)` fails under `tag` when `fails` holds, and passes its input on otherwise.
+- `rejectWith(problem, tag)` does the same with a query that returns an `Option` of what's wrong, and fails carrying it. The query is an ordinary function that makes sense on its own.
+- `attempt(step, tag)` runs a step and wraps its error under `tag`. It's `wrapError` for a step.
+
+`checkout`, from above, written as a chain:
+
+```typescript
+const checkout: (order: Order) => Result<Receipt, CheckoutErr> = flow(
+  attempt(zoom("method", authorizeMethod), "authorize"),
+  attempt(({ method, cents }) => chargeGateway(method, cents), "charge"),
+);
+```
+
+`zoom`, [below](#zoom-and-over), runs `authorizeMethod` on the order's `method` and keeps the rest of the order. `flow` takes one to six steps. For a longer chain, name a few of its steps as a chain of their own and use that as one step.
+
+### matchTag
+
+`matchTag` is a `switch` over a sum in which every case only hands its payload to a function. It takes one handler per tag, gives each the payload of its case, and wraps the handler's error under that tag. A handler that can't fail adds no error case.
+
+```typescript
+import { matchTag, ok, type Result, type Sum } from "ts-sumtype";
+
+const cardFee: (card: { cardNumber: string }) => Result<number, CardNumberErr> = flow(
+  (card) => cardNumber(card.cardNumber),
+  map((digits) => (digits.startsWith("3") ? 0.035 : 0.024)),
+);
+
+const methodFee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardNumberErr }>> = matchTag({
+  cash: () => ok(0),
+  paypal: () => ok(0.029),
+  creditCard: cardFee,
+  crypto: () => ok(0.01),
+});
+```
+
+Like `flow`, it takes its types from the declared constant: each handler's payload, and the error type to check against. A missing handler, a handler for a tag the sum doesn't have, and an error the declared type has no case for are each a compile error. Used as a step inside a declared `flow`, it takes its input type from the step before it. When a case does work of its own rather than delegating, write the `switch`.
+
+### zoom and over
+
+`zoom(key, step)` runs a step on one part of a value, an object's key or a tuple's index, and rebuilds the whole around the result without changing the original. A deeper part is reached by nesting, one key per call:
+
+```typescript
+import { zoom, over, map, type Step } from "ts-sumtype";
+
+type CardForm = { holder: string; card: { number: string; expiry: string } };
+
+const parseForm: Step<CardForm, CardForm, CardNumberErr> = zoom("card", zoom("number", cardNumber));
+
+parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30" } });
+// { tag: "ok", ok: { holder: "Ada", card: { number: "4111111111111111", expiry: "12/30" } } }
+```
+
+The part may change type, and the whole's type follows it: `zoom("card", zoom("number", map(Number)))` produces a form whose card number is a `number`. `over(key, f)` does the same with a plain function, and fits `.map`:
+
+```typescript
+forms.map(over("holder", (holder) => holder.toUpperCase()));
+```
+
+`zoom` takes one key per call rather than a path because of what the compiler can say about it:
+
+| | Autocomplete on each key | A misspelled key |
+|---|---|---|
+| `zoom("card", zoom("number", f))` | yes | reported at the key, naming the valid keys |
+| `zoom(["card", "number"], f)` | yes | every segment reported as `never` |
+| `zoom("card", "number")(f)` | no | reported on the argument before it |
+
+### Errors that say where
+
+`At<L, E>` is an error together with where it happened: `{ at, error }`. `tryFlatMap(step, tag)` runs a step on every entry of a list and concatenates what each returns. The first entry that fails stops it, and its error comes back under `tag`, located by the entry's key. Entries are `Entry<V>`, `{ key, payload }`, the ordered form of a record that `entries(record)` produces. `prepend(items)` is the step that puts items ahead of a list.
+
+Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
+
+```typescript
+import { flow, map, rejectIf, tryFlatMap, matchTag, zoom, ok, type At, type Entry, type Result, type Step, type Sum, type Unit } from "ts-sumtype";
+
+type Shape = Sum<{ scalar: Unit; object: readonly Entry<Shape>[] }>;
+type Column = readonly string[];
+
+type ColumnsErr = Sum<{ object: ObjectErr }>;
+type ObjectErr = Sum<{ noFields: Unit; field: At<string, ColumnsErr> }>;
+
+function columns(shape: Shape): Result<readonly Column[], ColumnsErr> {
+  return columnsByTag(shape);
+}
+
+const fieldColumns: Step<Entry<Shape>, readonly Column[], ColumnsErr> = flow(
+  zoom("payload", columns),
+  map(({ key, payload }) => payload.map((path) => [key, ...path])),
+);
+
+const objectColumns: Step<readonly Entry<Shape>[], readonly Column[], ObjectErr> = flow(
+  rejectIf((fields) => fields.length === 0, "noFields"),
+  tryFlatMap(fieldColumns, "field"),
+);
+
+const columnsByTag: Step<Shape, readonly Column[], ColumnsErr> = matchTag({
+  scalar: () => ok([[]]),
+  object: objectColumns,
+});
+```
+
+An order whose `shipping` field is an object with no fields fails with an error that reads, from the outside in, as the path down to it:
+
+```typescript
+{ tag: "error", error: { tag: "object", object: { tag: "field", field: {
+  at: "shipping", error: { tag: "object", object: { tag: "noFields", noFields: null } } } } } }
+```
+
+None of these functions is told where it is. Each builds its result from its children's results, and the location is added on the way back up, one level per `tryFlatMap`.
+
+A chain reads its steps when it's built, so the constants are declared children first, and the recursion goes through a `function` declaration. `columns` is hoisted, so `fieldColumns` can refer to it before the line that defines it. A `const` there would not be assigned yet.
+
+### Steps at a glance
+
+| Step | Takes → gives | Its error |
+|---|---|---|
+| `flow(s1, …, s6)` | `s1`'s input → the last step's output | every step's error |
+| `map(f)` | `f`'s input → `f`'s output | none |
+| `attempt(step, tag)` | as `step` | `step`'s, under `tag` |
+| `rejectIf(fails, tag)` | its input, unchanged | `tag`, with no payload |
+| `rejectWith(problem, tag)` | its input, unchanged | `tag`, carrying the problem found |
+| `tryFlatMap(step, tag)` | entries → every entry's output, concatenated | `tag`, carrying `{ at: key, error }` |
+| `prepend(items)` | a list → the list with `items` first | none |
+| `matchTag(handlers)` | a sum → any handler's output | each handler's, under its tag |
+| `zoom(key, step)` | a value → the value with that part replaced | `step`'s |
 
 ---
 
@@ -577,7 +769,7 @@ import { fromEnum } from "ts-sumtype";
 fromEnum("bitcoin"); // { tag: "bitcoin", bitcoin: null }
 ```
 
-This is the same representation this README argued against building new code around, back in [Sum](#sum), useful at a boundary you don't control, not as the shape to reach for when you do. Unlike `variant`, which expects a single-key object and can't be pointed at a bare string, `fromEnum` takes the string directly, so `arr.map(fromEnum)` converts every element, ignoring the extra index/array arguments `.map` passes along.
+This is the same representation this README argued against building new code around, back in [Sum](#sum), useful at a boundary you don't control, not as the shape to reach for when you do. Unlike `variant`, whose second argument is the payload, `fromEnum` takes the string alone, so `arr.map(fromEnum)` converts every element, ignoring the extra index/array arguments `.map` passes along.
 
 ---
 
@@ -587,6 +779,7 @@ This is the same representation this README argued against building new code aro
 - **`"tag"` is a reserved case name.** Its payload key would collide with the discriminant, so `Sum<{ tag: T }>` intersects the discriminant with `T` on the same field; for most `T` that leaves `tag` uninhabitable. Pick any other case name.
 - **Variance is covariant.** `Result<Receipt, never>` is assignable to `Result<Receipt, GatewayErr>`; the reverse (narrowing) is a type error.
 - **`Frozen` reaches one unrolling of a recursive type.** `Frozen<Sum<{ ... }>>` at a declaration is frozen all the way down; `Frozen<SomeRecursiveTypeDeclaredElsewhere>` leaves that type's inner occurrences mutable, see [Frozen](#frozen).
+- **TypeScript 5.4 or later, Node 20 or later.** `wrapError` and `matchTag` use `NoInfer`, which TypeScript 5.4 introduced, and `zoom` rebuilds a tuple with `Array.prototype.with`, which Node 20 introduced.
 - **Payloads must be JSON-safe** to survive a `JSON.stringify` / `JSON.parse` round-trip: functions, symbols, and `bigint` don't survive it, and neither does `undefined`, which is silently dropped from whatever key holds it. That last one is why empty payloads are typed `Unit`/`null` rather than `undefined`, see [Unit](#unit).
 
 ---
@@ -600,7 +793,7 @@ import { ok } from "ts-sumtype/result";
 import { variant } from "ts-sumtype/variant";
 ```
 
-`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`.
+`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/flow`, `/match`, `/zoom`, `/entry`.
 
 ---
 
