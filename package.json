@@ -1,6 +1,6 @@
 {
   "name": "ts-sumtype",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Tagged unions with one primitive: Sum, Result, Option.",
   "license": "MIT",
   "author": "wagnerkaue <wagnerkauemds@gmail.com>",
@@ -24,39 +24,85 @@
   ],
   "type": "module",
   "sideEffects": false,
-  "engines": { "node": ">=18" },
-  "files": ["dist"],
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-      "require": { "types": "./dist/index.d.cts", "default": "./dist/index.cjs" }
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
     },
     "./variant": {
-      "import": { "types": "./dist/variant.d.ts", "default": "./dist/variant.js" },
-      "require": { "types": "./dist/variant.d.cts", "default": "./dist/variant.cjs" }
+      "import": {
+        "types": "./dist/variant.d.ts",
+        "default": "./dist/variant.js"
+      },
+      "require": {
+        "types": "./dist/variant.d.cts",
+        "default": "./dist/variant.cjs"
+      }
     },
     "./result": {
-      "import": { "types": "./dist/result.d.ts", "default": "./dist/result.js" },
-      "require": { "types": "./dist/result.d.cts", "default": "./dist/result.cjs" }
+      "import": {
+        "types": "./dist/result.d.ts",
+        "default": "./dist/result.js"
+      },
+      "require": {
+        "types": "./dist/result.d.cts",
+        "default": "./dist/result.cjs"
+      }
     },
     "./option": {
-      "import": { "types": "./dist/option.d.ts", "default": "./dist/option.js" },
-      "require": { "types": "./dist/option.d.cts", "default": "./dist/option.cjs" }
+      "import": {
+        "types": "./dist/option.d.ts",
+        "default": "./dist/option.js"
+      },
+      "require": {
+        "types": "./dist/option.d.cts",
+        "default": "./dist/option.cjs"
+      }
     },
     "./unwrap": {
-      "import": { "types": "./dist/unwrap.d.ts", "default": "./dist/unwrap.js" },
-      "require": { "types": "./dist/unwrap.d.cts", "default": "./dist/unwrap.cjs" }
+      "import": {
+        "types": "./dist/unwrap.d.ts",
+        "default": "./dist/unwrap.js"
+      },
+      "require": {
+        "types": "./dist/unwrap.d.cts",
+        "default": "./dist/unwrap.cjs"
+      }
     },
     "./adapt": {
-      "import": { "types": "./dist/adapt.d.ts", "default": "./dist/adapt.js" },
-      "require": { "types": "./dist/adapt.d.cts", "default": "./dist/adapt.cjs" }
+      "import": {
+        "types": "./dist/adapt.d.ts",
+        "default": "./dist/adapt.js"
+      },
+      "require": {
+        "types": "./dist/adapt.d.cts",
+        "default": "./dist/adapt.cjs"
+      }
     },
     "./pipe": {
-      "import": { "types": "./dist/pipe.d.ts", "default": "./dist/pipe.js" },
-      "require": { "types": "./dist/pipe.d.cts", "default": "./dist/pipe.cjs" }
+      "import": {
+        "types": "./dist/pipe.d.ts",
+        "default": "./dist/pipe.js"
+      },
+      "require": {
+        "types": "./dist/pipe.d.cts",
+        "default": "./dist/pipe.cjs"
+      }
     },
     "./package.json": "./package.json"
   },
