@@ -335,7 +335,7 @@ type Result<T, E> =
   | { ok: false; error: E };
 ```
 
-This is the boxed shape rejected back in [Sum](#sum), with the same cost: `value` and `error` are generic slots, not names, so there's nothing to read symmetrically the way `method.creditCard` does. It also can't take the fix `PaymentMethod` took instead: `true` and `false` aren't strings, so they can't double as their own payload's key the way `"cash"` and `"paypal"` do. `Result<T, E>` is `Ok<T> | Err<E>` instead: two string-tagged cases, built from the same `Sum` convention as everything else. The success case keeps the word `ok`, it just becomes a string tag instead of a boolean field, which is exactly what lets it double as its own payload's key: `value` becomes `.ok`, `error` becomes `.error`, each reachable by its own name instead of a shared placeholder. `ok(value)` builds the success case directly; `errVariant(shape)` builds the failure case with its own payload tagged too, so when several errors can occur they stay discriminable by their inner tag (more on the plain `err(payload)` it's built from, below):
+This is the boxed shape rejected back in [Sum](#sum), with the same cost: `value` and `error` are generic slots, not names, so there's nothing to read symmetrically the way `method.creditCard` does. It also can't take the fix `PaymentMethod` took instead: `true` and `false` aren't strings, so they can't double as their own payload's key the way `"cash"` and `"paypal"` do. `Result<T, E>` is `Ok<T> | Err<E>` instead: two string-tagged cases, built from the same `Sum` convention as everything else. The success case keeps the word `ok`, it just becomes a string tag instead of a boolean field, which is exactly what lets it double as its own payload's key: `value` becomes `.ok`, `error` becomes `.error`, each reachable by its own name instead of a shared placeholder. `ok(value)` builds the success case directly; `errVariant(tag, payload)` builds the failure case with its own payload tagged too, so when several errors can occur they stay discriminable by their inner tag (more on the plain `err(payload)` it's built from, below):
 
 ```typescript
 import { ok, errVariant, unit, type Result } from "ts-sumtype";
@@ -394,16 +394,16 @@ errVariant("declined", { reason: "insufficient_funds" });
 // { tag: "error", error: { tag: "declined", declined: { reason: "insufficient_funds" } } }
 ```
 
-`errVariant` is `tagged("error")`, a constructor pre-nested under one outer tag. Build your own the same way when a case needs a taxonomy of its own: here, `declined`'s free-text `reason` becomes its own discriminable tag instead of a string you'd have to switch on by hand:
+`errVariant` builds the same value as `tagged("error")`, a constructor pre-nested under one outer tag. Build your own the same way when a case needs a taxonomy of its own: here, `declined`'s free-text `reason` becomes its own discriminable tag instead of a string you'd have to switch on by hand:
 
 ```typescript
 import { tagged } from "ts-sumtype";
 
 const declined = tagged("error", "declined");
-declined({ insufficientFunds: { available: 420 } });
+declined("insufficientFunds", { available: 420 });
 // { tag: "error", error: { tag: "declined", declined: { tag: "insufficientFunds", insufficientFunds: { available: 420 } } } }
 
-declined({ stolenCard: unit });
+declined("stolenCard", unit);
 // { tag: "error", error: { tag: "declined", declined: { tag: "stolenCard", stolenCard: null } } }
 ```
 

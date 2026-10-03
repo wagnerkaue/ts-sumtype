@@ -1,4 +1,4 @@
-import { variant, tagged, isVariant, type Sum } from "./variant";
+import { variant, isVariant, unit, type Sum, type Unit } from "./variant";
 import { some, none, type Option } from "./option";
 
 /** The success case of a `Result`. */
@@ -15,25 +15,37 @@ type AnyResult<T, E> = Ok<T> | ErrShape<E>;
 
 /** Builds the success case carrying `value`. */
 export function ok<const T>(value: T): Ok<T> {
-  return variant("ok", value);
+  // Not `variant("ok", value)`: its computed key sees every tag in the program, so V8 gives the
+  // object no fixed layout, and building one through it measured several times slower.
+  return { tag: "ok", ok: value };
 }
 
 /** Type guard: true when `r` is the success case, narrowing to `Ok<T>`. */
 export function isOk<T, E>(r: Result<T, E>): r is Ok<T> {
-  return isVariant(r as AnyResult<T, E>, "ok");
+  // Not `isVariant(r, "ok")`: that allocates an array for its rest parameter on every call.
+  return (r as AnyResult<T, E>).tag === "ok";
 }
 
 /** Builds the failure case carrying `payload` directly. */
 export function err<const E>(payload: E): Err<E> {
-  return variant("error", payload) as Err<E>;
+  // Not `variant("error", payload)`: a fixed-key literal keeps one object layout. See `ok`.
+  return { tag: "error", error: payload } as Err<E>;
 }
 
-/** Builds an `Err` whose payload is itself a `Sum` case: `errVariant({ tag: payload })`. */
-export const errVariant = tagged("error");
+/** Builds an `Err` whose payload is itself a `Sum` case: `errVariant("declined", { reason })`. */
+export function errVariant<const K extends string, const P>(tag: K, payload: P): Err<Sum<Record<K, P>>>;
+/** Builds an `Err` whose payload is a case with no payload: `errVariant("timeout")`. */
+export function errVariant<const K extends string>(tag: K): Err<Sum<Record<K, Unit>>>;
+export function errVariant(tag: string, payload: unknown = unit): unknown {
+  // Not `tagged("error")`: its return type is the expanded object, which a generic caller cannot
+  // assign to `Err<E>`, since that stays an unresolved conditional while `E` is generic.
+  return err(variant(tag, payload));
+}
 
 /** Type guard: true when `r` is the error case, narrowing to `Err<E>`. */
 export function isErr<T, E>(r: Result<T, E>): r is Err<E> {
-  return isVariant(r as AnyResult<T, E>, "error");
+  // Not `isVariant(r, "error")`: that allocates an array for its rest parameter on every call.
+  return (r as AnyResult<T, E>).tag === "error";
 }
 
 /** Runs `f`, catching a throw into an `Err` (optionally mapped by `mapError`). */

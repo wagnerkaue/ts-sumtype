@@ -31,7 +31,7 @@ function earlyReturnGuard(): number {
   return r3.ok; // narrowed via isErr
 }
 
-// ── T3: err(payload) mirrors ok(value) -- no shape constraint; errVariant(shape) is tagged("error")
+// ── T3: err(payload) mirrors ok(value) -- no shape constraint; errVariant(tag, payload) is err(variant(tag, payload))
 const rawErr = err({ http: "declined", extra: 1 }); // any payload, stored as-is
 const rawErrProbe: Sum<{ error: { http: string; extra: number } }> = rawErr;
 
@@ -42,6 +42,9 @@ const unitErr = errVariant("timeout", null);
 const unitErrProbe: Sum<{ error: Sum<{ timeout: null }> }> = unitErr;
 // @ts-expect-error the tag is an argument, so an object is not one
 const badTagged = errVariant({ http: "declined", extra: 1 });
+// Returns `Err<…>` itself, so it is assignable to a `Result` whose error type is still generic.
+const wrapGeneric = <T, E, const K extends string>(r: Result<T, E>, tag: K): Result<T, Sum<Record<K, E>>> =>
+  isOk(r) ? r : errVariant(tag, r.error);
 
 // ── T4: fromThrowable / allErrors / toOption
 const t4a = fromThrowable(() => 1);
