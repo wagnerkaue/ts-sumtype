@@ -48,6 +48,35 @@ export function isErr<T, E>(r: Result<T, E>): r is Err<E> {
   return (r as AnyResult<T, E>).tag === "error";
 }
 
+/** An error together with where it happened: the key of a field, the index of an element. */
+export type At<L, E> = { readonly at: L; readonly error: E };
+
+/**
+ * `E` as the payload of a case tagged `K`, or `never` when `E` is: wrapping an error that can't
+ * happen adds no case. Generic code wrapping an error names its result with this type, which is
+ * what lets it return `wrapError(...)` without a cast.
+ */
+export type Wrapped<K extends string, E> = [E] extends [never] ? never : Sum<Record<K, E>>;
+
+/** Transforms the error of `result` with `f`, passing a success through unchanged. */
+export function mapError<T, E, F>(result: Result<T, E>, f: (error: E) => F): Result<T, F> {
+  return isOk(result) ? result : err(f(result.error));
+}
+
+/**
+ * Wraps the error of `result` as a case tagged `tag`, the error a caller reports for the part
+ * that failed: `wrapError(parseCard(raw), "card")`. A `result` that can't fail stays one.
+ */
+export function wrapError<T, E = never, const K extends string = string>(
+  result: Result<T, E>,
+  tag: K,
+): Result<T, NoInfer<Wrapped<K, E>>> {
+  // `NoInfer`: without it, TypeScript infers `E` from the declared type of whatever receives a
+  // total `result`, and the case that can't happen comes back.
+  // The cast is sound: this branch runs only when there is an error, and then `E` is not `never`.
+  return isOk(result) ? result : (err(variant(tag, result.error)) as never);
+}
+
 /** Runs `f`, catching a throw into an `Err` (optionally mapped by `mapError`). */
 export function fromThrowable<T, E = unknown>(f: () => T, mapError?: (e: unknown) => E): Result<T, E> {
   try {

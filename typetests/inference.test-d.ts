@@ -1,7 +1,8 @@
 import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, allErrors, toOption,
-  type Ok, type Err, type Result,
+  mapError, wrapError,
+  type Ok, type Err, type Result, type At, type Wrapped,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
   unwrap, unwrapOr, expect, fromNullable, all,
@@ -384,6 +385,30 @@ function t14MapOk<T, U, E>(r: Result<T, E>, f: (t: T) => U): Result<U, E> {
   if (isErr(r)) return r;
   return ok(f(r.ok));
 }
+
+// ── T17: wrapError -- an error wrapped under a tag, and nothing added for a step that can't fail
+declare const t17Total: Result<number, never>;
+declare const t17Fallible: Result<number, "bad">;
+declare const t17Nested: Result<number, ParseErr>;
+
+// a total result stays total, so `.ok` reads without narrowing
+const t17TotalValue: number = wrapError(t17Total, "parse").ok;
+const t17FallibleProbe: Result<number, Sum<{ parse: "bad" }>> = wrapError(t17Fallible, "parse");
+const t17NestedProbe: Result<number, Sum<{ parse: ParseErr }>> = wrapError(t17Nested, "parse");
+// @ts-expect-error the declared error has no `parse` case
+const t17Missing: Result<number, Sum<{ other: Unit }>> = wrapError(t17Fallible, "parse");
+// a total result checked against a declared error type adds no case the declaration must list;
+// this is what `NoInfer` in wrapError's return type guards
+const t17TotalProbe: Result<number, Sum<{ other: Unit }>> = wrapError(t17Total, "parse");
+
+// generic code returns it with no cast, naming its result with `Wrapped`
+function t17Wrap<T, E, const K extends string>(r: Result<T, E>, tag: K): Result<T, Wrapped<K, E>> {
+  return wrapError(r, tag);
+}
+
+const t17Mapped: Result<number, string> = mapError(t17Fallible, (e) => `${e}!`);
+declare const t17Located: At<string, "bad">;
+const t17LocatedError: "bad" = t17Located.error;
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ok, err, errVariant, isOk, isErr, isVariant, fromThrowable, allErrors, toOption, variant } from "../src/index";
+import { ok, err, errVariant, isOk, isErr, isVariant, fromThrowable, allErrors, toOption, variant, mapError, wrapError } from "../src/index";
 
 describe("result", () => {
   it("ok(1) deep-equals { tag: 'ok', ok: 1 }", () => {
@@ -55,6 +55,19 @@ describe("result", () => {
         { tag: "b", b: null },
       ],
     });
+  });
+
+  it("mapError transforms the error and passes a success through", () => {
+    expect(mapError(err("bad"), (e) => e.length)).toEqual({ tag: "error", error: 3 });
+    expect(mapError(ok(1), (e: string) => e.length)).toEqual({ tag: "ok", ok: 1 });
+  });
+
+  it("wrapError wraps the error under its tag and passes a success through", () => {
+    expect(wrapError(err("bad"), "parse")).toEqual({
+      tag: "error",
+      error: { tag: "parse", parse: "bad" },
+    });
+    expect(wrapError(ok(1), "parse")).toEqual({ tag: "ok", ok: 1 });
   });
 
   it("toOption converts correctly", () => {

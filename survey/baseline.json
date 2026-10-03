@@ -861,6 +861,35 @@
         "overload": false
       }
     },
+    "wraperror-missing-case": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 872,
+        "lines": 5,
+        "depth": 4,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 51,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
     "recursive-direct-build": {
       "anomaly": null,
       "lib": {
