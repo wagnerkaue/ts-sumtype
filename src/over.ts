@@ -11,19 +11,19 @@ function replace<S, K extends keyof S, B>(whole: S, key: K, part: B): Replace<S,
 }
 
 /**
- * Runs `step` on the part of `whole` at `key`, rebuilding the whole around what it returns. A
- * deeper part is reached by nesting: `tryOver("payment", tryOver("card", tryOver("number", parse)))`.
+ * Updates the part of `whole` at `key`, rebuilding the whole around the result. A deeper part is
+ * reached by nesting: `over("card", over("number", Number))`.
  */
+export function over<S, const K extends keyof S, B>(key: K, f: (part: S[K]) => B): (whole: S) => Replace<S, K, B> {
+  // One key per call, not a path: nesting keeps autocomplete on each key, where a path array would
+  // report a misspelled key as `never`.
+  return (whole) => replace(whole, key, f(whole[key]));
+}
+
+/** `over` for a step: a success is rebuilt into the whole, and an error passes through. */
 export function tryOver<S, const K extends keyof S, B, E>(key: K, step: Step<S[K], B, E>): Step<S, Replace<S, K, B>, E> {
-  // One key, not a path: nested calls keep autocomplete on every key and report a wrong one where
-  // it is written, listing the valid keys. A path array reports every segment as `never`.
   return (whole) => {
     const result = step(whole[key]);
     return isOk(result) ? ok(replace(whole, key, result.ok)) : result;
   };
-}
-
-/** `tryOver` with a plain function: updates the part of `whole` at `key`, rebuilding the whole. */
-export function over<S, const K extends keyof S, B>(key: K, f: (part: S[K]) => B): (whole: S) => Replace<S, K, B> {
-  return (whole) => replace(whole, key, f(whole[key]));
 }
