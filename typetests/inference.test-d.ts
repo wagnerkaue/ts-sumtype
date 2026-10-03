@@ -4,7 +4,7 @@ import {
   mapError, wrapError,
   flow, tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
   entries, type Entry,
-  tryOver, over, tryMatch,
+  tryOver, over, match, tryMatch,
   type Ok, type Err, type Result, type At, type Wrapped,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
@@ -546,6 +546,46 @@ const t21Mismatch: (path: T21Path) => number = flow(
 function t21Compose<A, B, C>(f: (a: A) => B, g: (b: B) => C): (a: A) => C {
   return flow(f, g);
 }
+
+// ── T22: match: a function over a sum, typed from the declared constant
+type T22Path = Sum<{ here: Unit; into: { key: string; rest: T22Path } }>;
+const t22Dotted: (path: T22Path) => string = match({
+  here: () => "",
+  into: ({ key, rest }) => key + t22Dotted(rest),
+});
+const t22Segment: (path: T22Path) => Option<string> = match({
+  here: () => none(),
+  into: ({ key, rest }) => (key.includes(".") ? some(key) : t22Segment(rest)),
+});
+
+// each mistake is one error, where it is written
+const t22Missing: (path: T22Path) => string = match(
+  // @ts-expect-error every tag needs a handler
+  { here: () => "" },
+);
+const t22Extra: (path: T22Path) => string = match({
+  here: () => "",
+  into: () => "",
+  // @ts-expect-error a handler for a tag the sum doesn't have
+  there: () => "",
+});
+// @ts-expect-error a handler returns a number where a string is declared
+const t22WrongOutput: (path: T22Path) => string = match({
+  here: () => "",
+  into: () => 1,
+});
+
+// handlers that really return `unknown` keep it
+declare const t22Unknown: (n: number) => unknown;
+const t22UnknownOut: (s: Sum<{ a: number; b: number }>) => unknown = match({
+  a: (n: number): unknown => t22Unknown(n),
+  b: (n: number): unknown => t22Unknown(n),
+});
+// @ts-expect-error the output is unknown, not number
+const t22UnknownAsNumber: (s: Sum<{ a: number; b: number }>) => number = match({
+  a: (n: number): unknown => t22Unknown(n),
+  b: (n: number): unknown => t22Unknown(n),
+});
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.

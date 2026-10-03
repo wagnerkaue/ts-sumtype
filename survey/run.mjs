@@ -23,7 +23,7 @@ const INTERNAL_NAMES = [
   "ErrShape", "AnyResult", "ValuesOf", "ErrorsOf", "ValueOf", "HaltOf",
   "UnwrapOk", "UnwrapSome", "HaltErr", "HaltNone", "EnsureOk", "EnsureSome",
   "Unflattened", "Rekeyed",
-  "HandlersFor", "NoOtherTags", "OutputOf", "WrappedErrorOf", "OkOf", "ErrorOf", "AtKey",
+  "HandlersFor", "NoOtherTags", "OutputOf", "WrappedErrorOf", "OkOf", "ErrorOf", "AtKey", "ReturnOf",
 ];
 
 // `Sum<{ a: X }>` prints as `{ readonly tag: "a" } & Pick<{ a: X }, "a">`. Every occurrence is

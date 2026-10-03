@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, flow, tryFlow, map, rejectIf, tryOver, tryMatch } from "../dist/index.js";
+import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, flow, tryFlow, map, rejectIf, tryOver, match, tryMatch } from "../dist/index.js";
 
 function pipeline(x) {
   const doubled = x > 0 ? ok(x * 10) : errVariant("neg", null);
@@ -25,6 +25,7 @@ const positive = tryFlow(rejectIf((n) => n <= 0, "notPositive"), map((n) => n * 
 assert.deepEqual(positive(2), { tag: "ok", ok: 4 });
 assert.deepEqual(positive(0), { tag: "error", error: { tag: "notPositive", notPositive: null } });
 assert.deepEqual(tryOver("card", tryOver(0, map(Number)))({ card: ["4111", "x"] }), { tag: "ok", ok: { card: [4111, "x"] } });
+assert.equal(match({ square: () => 4, triangle: () => 3 })(variant("triangle")), 3);
 const size = tryMatch({ one: map(() => 1), many: rejectIf((n) => n < 0, "negative") });
 assert.deepEqual(size(variant("many", 3)), { tag: "ok", ok: 3 });
 assert.deepEqual(size(variant("many", -1)), { tag: "error", error: { tag: "many", many: { tag: "negative", negative: null } } });

@@ -3,54 +3,47 @@ import { wrapError, type Result, type Wrapped } from "./result";
 import { type Step } from "./flow";
 
 /**
- * For each tag of `V`, a step taking that case's payload. The optional `tag` key marks this type:
- * no handlers object has one, since `tag` is never a case name, so `H` has it only when the
- * handlers were rejected and TypeScript fell back to this constraint. `Settled` reads that mark.
+ * For each tag of `V`, a handler taking that case's payload and returning an `R`. No handlers
+ * object has a `tag` key, so `H` has one only when TypeScript rejected the handlers and fell back
+ * to this constraint, which is what `Settled` reads.
  */
-type HandlersFor<V extends { tag: string }> = {
-  readonly [K in V["tag"]]: (payload: PayloadOf<V, K>) => Result<unknown, unknown>;
+type HandlersFor<V extends { tag: string }, R> = {
+  readonly [K in V["tag"]]: (payload: PayloadOf<V, K>) => R;
 } & { readonly tag?: never };
-/**
- * Rules out a handler for a tag `V` doesn't have, which a constraint alone would accept: a sum that
- * loses a case would otherwise keep its handler around, unreachable.
- */
+/** A key of `H` that isn't a tag of `V` must be `never`, which no handler is. */
 type NoOtherTags<V extends { tag: string }, H> = { readonly [K in Exclude<keyof H, V["tag"] | "tag">]: never };
-/**
- * `T`, or `never` once the handlers were rejected. The error at the handler is already reported;
- * without this, the fallback's `unknown` output fails the declared type too, a second error about
- * the same mistake, and the first one a reader sees.
- */
+/** `T`, or `never` for rejected handlers, so the mistake is reported once, at the handler. */
 type Settled<H, T> = "tag" extends keyof H ? never : T;
+type ReturnOf<H> = ReturnOfHandler<H[keyof H]>;
+type ReturnOfHandler<F> = F extends (payload: never) => infer R ? R : never;
 type OkOf<R> = R extends { readonly tag: "ok"; readonly ok: infer T } ? T : never;
 type ErrorOf<R> = R extends { readonly tag: "error"; readonly error: infer E } ? E : never;
-/** What any of the handlers succeeds with. */
-type OutputOf<H> = { [K in keyof H]: H[K] extends (payload: never) => infer R ? OkOf<R> : never }[keyof H];
-/** Each handler's error wrapped under its tag, with no case for a handler that can't fail. */
 type WrappedErrorOf<H> = {
   [K in keyof H & string]: H[K] extends (payload: never) => infer R ? Wrapped<K, ErrorOf<R>> : never;
 }[keyof H & string];
 
+function dispatch(handlers: object, value: { tag: string }): unknown {
+  // Casts: choosing a handler by the tag at runtime is not something the types can follow.
+  const handler = (handlers as Readonly<Record<string, (payload: unknown) => unknown>>)[value.tag];
+  return handler((value as unknown as Readonly<Record<string, unknown>>)[value.tag]);
+}
+
 /**
- * A step over the sum `V` that hands each case's payload to the handler for its tag, wrapping the
- * handler's error under that tag. Like `tryFlow`, it is assigned to a constant with a declared type,
- * which is where `V` and each handler's payload type come from:
- *
- * ```ts
- * const fee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardErr }>> = tryMatch({
- *   cash: () => ok(0),
- *   paypal: () => ok(0.029),
- *   creditCard: (card) => cardFee(card),
- *   crypto: () => ok(0.01),
- * });
- * ```
+ * A function over the sum `V` that hands each case's payload to the handler for its tag. Assigned
+ * to a constant with a declared type, each handler takes its payload type from that declaration.
  */
-export function tryMatch<V extends { tag: string }, const H extends HandlersFor<V>>(
+export function match<V extends { tag: string }, const H extends HandlersFor<V, unknown>>(
   handlers: H & NoInfer<NoOtherTags<V, H>>,
-): Step<V, Settled<H, OutputOf<H>>, Settled<H, WrappedErrorOf<H>>> {
-  return (value) => {
-    // Casts: choosing a handler by the tag at runtime is not something the types can follow.
-    const handler = (handlers as Readonly<Record<string, (payload: unknown) => Result<unknown, unknown>>>)[value.tag];
-    const payload = (value as unknown as Readonly<Record<string, unknown>>)[value.tag];
-    return wrapError(handler(payload), value.tag) as never;
-  };
+): (value: V) => Settled<H, ReturnOf<H>> {
+  return (value) => dispatch(handlers, value) as never;
+}
+
+/**
+ * `match` for handlers that are steps: the handler's error comes back wrapped under its tag, and a
+ * handler that can't fail adds no error case.
+ */
+export function tryMatch<V extends { tag: string }, const H extends HandlersFor<V, Result<unknown, unknown>>>(
+  handlers: H & NoInfer<NoOtherTags<V, H>>,
+): Step<V, Settled<H, OkOf<ReturnOf<H>>>, Settled<H, WrappedErrorOf<H>>> {
+  return (value) => wrapError(dispatch(handlers, value) as Result<unknown, unknown>, value.tag) as never;
 }

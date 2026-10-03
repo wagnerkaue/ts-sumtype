@@ -101,6 +101,31 @@
         "overload": false
       }
     },
+    "baseline-match": {
+      "anomaly": null,
+      "lib": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 0,
+        "codes": [],
+        "chars": 0,
+        "lines": 0,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
     "variant-object-as-tag": {
       "anomaly": null,
       "lib": {
@@ -495,14 +520,73 @@
         "codes": [
           "TS2322"
         ],
-        "chars": 715,
+        "chars": 356,
         "lines": 3,
         "depth": 2,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 49,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-missing-handler": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 669,
+        "lines": 2,
+        "depth": 1,
         "leaks": [
-          "OutputOf"
+          "HandlersFor",
+          "NoOtherTags"
         ],
         "sumExpansions": 0,
         "truncated": true,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2366"
+        ],
+        "chars": 84,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
+    "match-wrong-output": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 209,
+        "lines": 3,
+        "depth": 2,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
         "overload": false
       },
       "ctl": {
