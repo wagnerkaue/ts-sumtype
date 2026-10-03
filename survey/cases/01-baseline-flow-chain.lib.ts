@@ -1,10 +1,10 @@
-// @case    baseline-pipe-chain
-// @feature pipe
+// @case    baseline-flow-chain
+// @feature flow
 // @kind    baseline
-// @title   Correct three-step pipe
+// @title   Correct three-step chain
 // @intent  Reference point: parse, validate, format -- each step lines up with the last.
 
-import { pipe, ok, err, type Result } from "ts-sumtype";
+import { flow, map, ok, err, type Result } from "ts-sumtype";
 
 const parse = (raw: string): Result<number, string> => {
   const n = Number(raw);
@@ -13,4 +13,4 @@ const parse = (raw: string): Result<number, string> => {
 const validate = (n: number): Result<number, string> => (n > 0 ? ok(n) : err("not positive"));
 const format = (n: number): string => n.toFixed(2);
 
-export const out = pipe("41.5", parse, validate, format);
+export const run: (raw: string) => Result<string, string> = flow(parse, validate, map(format));

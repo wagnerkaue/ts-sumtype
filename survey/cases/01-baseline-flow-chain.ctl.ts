@@ -1,7 +1,7 @@
-// @case    baseline-pipe-chain
+// @case    baseline-flow-chain
 // @feature hand-written early-return chain
 // @kind    baseline
-// @title   Correct three-step pipe
+// @title   Correct three-step chain
 // @intent  Reference point: parse, validate, format -- each step lines up with the last.
 
 type Res<T> = { ok: true; value: T } | { ok: false; error: string };

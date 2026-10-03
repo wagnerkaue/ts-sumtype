@@ -26,7 +26,7 @@
         "overload": false
       }
     },
-    "baseline-pipe-chain": {
+    "baseline-flow-chain": {
       "anomaly": null,
       "lib": {
         "count": 0,
@@ -663,35 +663,6 @@
         "overload": false
       }
     },
-    "allerrors-varargs": {
-      "anomaly": null,
-      "lib": {
-        "count": 1,
-        "codes": [
-          "TS2554"
-        ],
-        "chars": 32,
-        "lines": 1,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      },
-      "ctl": {
-        "count": 1,
-        "codes": [
-          "TS2554"
-        ],
-        "chars": 32,
-        "lines": 1,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      }
-    },
     "fromnullable-overload-confusion": {
       "anomaly": null,
       "lib": {
@@ -837,35 +808,6 @@
         "overload": false
       }
     },
-    "all-destructured": {
-      "anomaly": null,
-      "lib": {
-        "count": 1,
-        "codes": [
-          "TS2488"
-        ],
-        "chars": 147,
-        "lines": 1,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      },
-      "ctl": {
-        "count": 1,
-        "codes": [
-          "TS2488"
-        ],
-        "chars": 95,
-        "lines": 1,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      }
-    },
     "fromflat-missing-key": {
       "anomaly": null,
       "lib": {
@@ -946,87 +888,6 @@
         ],
         "chars": 49,
         "lines": 1,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      }
-    },
-    "pipe-step-mismatch": {
-      "anomaly": null,
-      "lib": {
-        "count": 1,
-        "codes": [
-          "TS2345"
-        ],
-        "chars": 211,
-        "lines": 3,
-        "depth": 2,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      },
-      "ctl": {
-        "count": 1,
-        "codes": [
-          "TS2345"
-        ],
-        "chars": 74,
-        "lines": 1,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      }
-    },
-    "pipe-too-many-steps": {
-      "anomaly": "plain TypeScript accepts this; only the library rejects it",
-      "lib": {
-        "count": 1,
-        "codes": [
-          "TS2554"
-        ],
-        "chars": 35,
-        "lines": 1,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      },
-      "ctl": {
-        "count": 0,
-        "codes": [],
-        "chars": 0,
-        "lines": 0,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      }
-    },
-    "pipe-in-generic-fn": {
-      "anomaly": null,
-      "lib": {
-        "count": 0,
-        "codes": [],
-        "chars": 0,
-        "lines": 0,
-        "depth": 0,
-        "leaks": [],
-        "sumExpansions": 0,
-        "truncated": false,
-        "overload": false
-      },
-      "ctl": {
-        "count": 0,
-        "codes": [],
-        "chars": 0,
-        "lines": 0,
         "depth": 0,
         "leaks": [],
         "sumExpansions": 0,

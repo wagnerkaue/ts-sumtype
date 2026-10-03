@@ -86,29 +86,6 @@ export function fromThrowable<T, E = unknown>(f: () => T, mapError?: (e: unknown
   }
 }
 
-type ValOf<X> = X extends Ok<infer T> ? T : never;
-type ErrOf<X> = X extends ErrShape<infer E> ? E : never;
-type ValuesOf<R extends readonly unknown[]> = {
-  -readonly [K in keyof R]: ValOf<R[K]>;
-};
-type ErrorsOf<R extends readonly unknown[]> = {
-  [K in keyof R]: ErrOf<R[K]>;
-}[number];
-
-/** Runs every `Result`, returning all values ok or an `Err` collecting every error. */
-export function allErrors<R extends readonly Result<unknown, unknown>[]>(
-  results: [...R],
-): Result<ValuesOf<R>, ErrorsOf<R>[]> {
-  const values: unknown[] = [];
-  const errors: unknown[] = [];
-  for (const r of results as readonly Result<unknown, unknown>[]) {
-    if (isVariant(r, "error")) errors.push(r.error);
-    else values.push(r.ok);
-  }
-  if (errors.length > 0) return err(errors as ErrorsOf<R>[]);
-  return ok(values as ValuesOf<R>);
-}
-
 /** `Ok → Some` (unchanged value), `Err → None`, dropping the error. */
 export function toOption<T, E>(r: Result<T, E>): Option<T> {
   const raw = r as AnyResult<T, E>;

@@ -11,7 +11,7 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [pipe](#pipe) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
 import { variant, type Sum, type Unit } from "ts-sumtype";
@@ -433,10 +433,7 @@ err(caught); // { tag: "error", error: caught }: whatever caught is, stored as-i
 | `errVariant("tag", payload)` | `Err<Sum<{ tag: payload }>>` |
 | `isOk(r)` / `isErr(r)` | type guards |
 | `fromThrowable(f, mapError?)` | runs `f`, catching a throw into `Err` |
-| `allErrors(results)` | one `Ok` of every value, or an `Err` collecting **every** error |
 | `toOption(r)` | `Ok → Some`, `Err → None` |
-
-`allErrors` gathers all failures. When you want to stop at the first one instead, use [`all`](#collecting-results).
 
 ---
 
@@ -495,42 +492,6 @@ unwrapOr(someOr(c.savedMethod, "absent"), variant("cash", unit));
 fromNullable(raw.savedMethod);           // Option<PaymentMethod>
 fromNullable(raw.savedMethod, "no method"); // Result<PaymentMethod, "no method">
 ```
-
-### Collecting results
-
-`all` walks an array of `Result`s, returning the tuple of values or short-circuiting on the first `Err` found:
-
-```typescript
-import { all } from "ts-sumtype";
-
-all([authorizeMethod(a), authorizeMethod(b)]);      // Ok<[PaymentMethod, PaymentMethod]>
-all([authorizeMethod(a), authorizeMethod(bad)]);    // Err, stops at the first declined method
-```
-
-### pipe
-
-`all` collects a fixed array of independent `Result`s. The other common shape is a *sequence*: each step depends on the previous one's success value, and any step failing should stop the rest from running. `pipe(value, ...fns)` threads `value` through each function left to right, feeding each one the previous step's unwrapped `ok`; a step returning `error` halts the pipe immediately, returned as-is, and the remaining functions never run:
-
-```typescript
-import { pipe } from "ts-sumtype";
-
-pipe(
-  authorizeMethod(method),          // Result<PaymentMethod, AuthorizeErr>
-  (m) => chargeGateway(m, cents),   // Result<Receipt, GatewayErr>
-  (r) => confirmReceipt(r),         // Result<Confirmation, ConfirmErr>
-);
-// Result<Confirmation, AuthorizeErr | GatewayErr | ConfirmErr>
-```
-
-`value` itself doesn't have to already be wrapped, and neither does a step's return: a plain value (not a `Result`) is passed straight through to the next step and can never halt. That's useful for a pure transform in the middle of a pipe, `(m) => m.id` say, without wrapping it in `ok(...)` just to satisfy the types:
-
-```typescript
-pipe(raw, (r) => authorizeMethod(r.method), (m) => m.id, (id) => chargeGateway(id, cents));
-```
-
-`pipe` always returns a `Result`, no exceptions: if the *last* step (or a zero-step `value`) is a plain value rather than one, it's wrapped in `ok(...)`, so `pipe(raw, (r) => r.id)` is a `Result<string, never>`, not a bare `string`, and `pipe(5)` is `Ok<5>`.
-
-Each step's parameter type is checked against the previous step's declared return type, so feeding a step the wrong shape is a compile error at that step. Up to 8 steps are supported. A step that produces an `Option` reaches the next one through [`someOr`](#option), which names the reason the value is absent.
 
 ---
 
@@ -627,14 +588,6 @@ This is the same representation this README argued against building new code aro
 - **Variance is covariant.** `Result<Receipt, never>` is assignable to `Result<Receipt, GatewayErr>`; the reverse (narrowing) is a type error.
 - **`Frozen` reaches one unrolling of a recursive type.** `Frozen<Sum<{ ... }>>` at a declaration is frozen all the way down; `Frozen<SomeRecursiveTypeDeclaredElsewhere>` leaves that type's inner occurrences mutable, see [Frozen](#frozen).
 - **Payloads must be JSON-safe** to survive a `JSON.stringify` / `JSON.parse` round-trip: functions, symbols, and `bigint` don't survive it, and neither does `undefined`, which is silently dropped from whatever key holds it. That last one is why empty payloads are typed `Unit`/`null` rather than `undefined`, see [Unit](#unit).
-- **A `const` whose initializer is narrower than its declared type** can confuse inference at a generic call site. `errVariant(...)` builds the error case alone, and `pipe` reads its seed from the construction site rather than the annotation, so the step's parameter arrives as that error case:
-
-  ```typescript
-  const cached: Result<number, GatewayErr> = errVariant("declined", { reason: "insufficient_funds" });
-  pipe(cached, (n) => n + 1); // n is the error case here, not number
-  ```
-
-  Let a function's declared return type produce the value, which is how ordinary code reads since signatures name the sum type. Annotating the step's own parameter does not help, because that is the side being checked; explicit type arguments do (`pipe<number, (n: number) => number, GatewayErr>(cached, ...)`), but they are rarely worth writing out.
 
 ---
 
@@ -647,7 +600,7 @@ import { ok } from "ts-sumtype/result";
 import { variant } from "ts-sumtype/variant";
 ```
 
-`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/pipe`.
+`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`.
 
 ---
 
