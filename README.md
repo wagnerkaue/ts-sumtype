@@ -627,7 +627,7 @@ forms.map(over("holder", (holder) => holder.toUpperCase()));
 
 ### Errors that say where
 
-`At<L, E>` is an error together with where it happened: `{ at, error }`. `tryFlatMap(step, tag)` runs a step on every entry of a list and concatenates what each returns. The first entry that fails stops it, and its error comes back under `tag`, located by the entry's key. Entries are `Entry<V>`, `{ key, payload }`, the ordered form of a record that `entries(record)` produces. `prepend(items)` is the step that puts items ahead of a list.
+`At<L, E>` is an error together with where it happened: `{ at, error }`. `tryFlatMap(step, tag)` runs a step on every entry of a list and concatenates what each returns. The first entry that fails stops it, and its error comes back under `tag`, located by the entry's key. Entries are `Entry<V>`, `{ key, payload }`, the ordered form of a record that `entries(record)` produces. `prepend(items)` puts items ahead of a list, and joins a chain through `map`.
 
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
@@ -681,7 +681,6 @@ A chain reads its steps when it's built, so the constants are declared children 
 | `rejectIf(fails, tag)` | its input, unchanged | `tag`, with no payload |
 | `rejectWith(problem, tag)` | its input, unchanged | `tag`, carrying the problem found |
 | `tryFlatMap(step, tag)` | entries → every entry's output, concatenated | `tag`, carrying `{ at: key, error }` |
-| `prepend(items)` | a list → the list with `items` first | none |
 | `tryMatch(handlers)` | a sum → any handler's output | each handler's, under its tag |
 | `tryOver(key, step)` | a value → the value with that part replaced | `step`'s |
 

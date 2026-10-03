@@ -420,7 +420,8 @@ const t18Dotted: Step<readonly string[], readonly string[], Sum<{ dotInSegment: 
   (path) => fromNullable(path.find((segment) => segment.includes("."))),
   "dotInSegment",
 );
-const t18Prepended: Step<readonly number[], readonly number[], never> = prepend([0]);
+const t18Prepended: (rest: readonly number[]) => readonly number[] = prepend([0]);
+const t18PrependStep: Step<readonly number[], readonly number[], never> = map(prepend([0]));
 
 // tryFlatMap locates a failure by the entry's key, and a total step locates nothing
 type T18ItemErr = Sum<{ item: At<string, "two"> }>;

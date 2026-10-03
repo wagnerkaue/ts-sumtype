@@ -27,7 +27,11 @@ describe("tryFlow", () => {
 
 describe("prepend", () => {
   it("puts the given items first", () => {
-    expect(prepend([1])([2, 3])).toEqual(ok([1, 2, 3]));
+    expect(prepend([1])([2, 3])).toEqual([1, 2, 3]);
+  });
+
+  it("joins a chain of steps through map", () => {
+    expect(tryFlow(map(prepend([1])))([2, 3])).toEqual(ok([1, 2, 3]));
   });
 });
 

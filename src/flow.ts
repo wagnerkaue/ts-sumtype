@@ -63,9 +63,9 @@ export function map<A, B>(f: (input: A) => B): Step<A, B, never> {
   return (input) => ok(f(input));
 }
 
-/** A step putting `first` ahead of the list it is given. */
-export function prepend<T>(first: readonly T[]): Step<readonly T[], readonly T[], never> {
-  return (rest) => ok([...first, ...rest]);
+/** Puts `first` ahead of the list it is given. */
+export function prepend<T>(first: readonly T[]): (rest: readonly T[]) => readonly T[] {
+  return (rest) => [...first, ...rest];
 }
 
 /** Runs `step`, wrapping its error under `tag`. A step that can't fail stays one. */
