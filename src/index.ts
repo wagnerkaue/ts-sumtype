@@ -7,3 +7,4 @@ export * from "./pipe";
 export * from "./entry";
 export * from "./flow";
 export * from "./zoom";
+export * from "./match";

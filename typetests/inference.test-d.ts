@@ -4,7 +4,7 @@ import {
   mapError, wrapError,
   flow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
   entries, type Entry,
-  zoom, over,
+  zoom, over, matchTag,
   type Ok, type Err, type Result, type At, type Wrapped,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
@@ -486,6 +486,72 @@ const t19Over: (pair: T19Pair) => readonly [string, boolean] = over(1, (n) => n 
 // a wrong key is reported where it is written
 // @ts-expect-error `crad` is not a key of the payment
 const t19Typo: Step<T19Order, T19Parsed, never> = zoom("payment", zoom("crad", zoom("number", map(Number))));
+
+// ── T20: matchTag -- a step over a sum, typed from the declared constant
+type T20Shape = Sum<{ circle: number; square: number; rect: [number, number]; empty: Unit }>;
+type T20Err = Sum<{ rect: "degenerate" }>;
+
+// inline handlers get their payload types; a handler that can't fail adds no error case
+const t20Area: Step<T20Shape, number, T20Err> = matchTag({
+  circle: (r) => ok(Math.PI * r * r),
+  square: (side) => ok(side * side),
+  rect: ([w, h]) => (w === 0 || h === 0 ? err("degenerate") : ok(w * h)),
+  empty: () => ok(0),
+});
+
+// a match whose handlers can't fail can't fail either
+const t20Total: Step<T20Shape, string, never> = matchTag({
+  circle: () => ok("circle"),
+  square: () => ok("square"),
+  rect: () => ok("rect"),
+  empty: () => ok("empty"),
+});
+declare const t20Shape: T20Shape;
+const t20TotalValue: string = t20Total(t20Shape).ok;
+
+// @ts-expect-error every tag needs a handler
+const t20Missing: Step<T20Shape, number, never> = matchTag({
+  circle: (r) => ok(r),
+  square: (side) => ok(side),
+  rect: ([w]) => ok(w),
+});
+
+const t20Extra: Step<T20Shape, number, never> = matchTag({
+  circle: (r) => ok(r),
+  square: (side) => ok(side),
+  rect: ([w]) => ok(w),
+  empty: () => ok(0),
+  // @ts-expect-error a handler for a tag the sum doesn't have
+  triangle: () => ok(0),
+});
+
+// a rejected handler is the only error: the declaration is not reported a second time
+const t20WrongPayload: Step<T20Shape, number, never> = matchTag({
+  // @ts-expect-error the circle's payload is a number
+  circle: (r: string) => ok(r.length),
+  square: (side) => ok(side),
+  rect: ([w]) => ok(w),
+  empty: () => ok(0),
+});
+
+// handlers that really succeed with `unknown` keep it, rather than reading as a rejected match
+declare const t20Unknown: Step<number, unknown, unknown>;
+// @ts-expect-error the output is unknown, not number
+const t20UnknownOut: Step<Sum<{ a: number; b: number }>, number, Sum<{ a: unknown; b: unknown }>> = matchTag({
+  a: (n: number): Result<unknown, unknown> => t20Unknown(n),
+  b: (n: number): Result<unknown, unknown> => t20Unknown(n),
+});
+
+// nested in a declared chain, it takes its input from the step before
+const t20Chained: Step<string, number, T20Err> = flow(
+  map((raw: string): T20Shape => variant("circle", Number(raw))),
+  matchTag({
+    circle: (r) => ok(Math.PI * r * r),
+    square: (side) => ok(side * side),
+    rect: ([w, h]) => (w === 0 || h === 0 ? err("degenerate") : ok(w * h)),
+    empty: () => ok(0),
+  }),
+);
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.
