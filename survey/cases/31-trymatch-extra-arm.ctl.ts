@@ -1,8 +1,8 @@
-// @case    baseline-match-exhaustive
+// @case    trymatch-extra-arm
 // @feature switch with a declared return type
-// @kind    baseline
-// @title   Correct exhaustive match
-// @intent  Reference point: every case handled, every payload used correctly.
+// @kind    mistake
+// @title   A handler for a tag that does not exist
+// @intent  Handle every case; the author adds a `triangle` case the union never had.
 
 type Res<T, E> = { ok: true; value: T } | { ok: false; error: E };
 
@@ -23,5 +23,7 @@ export function area(s: Shape): Res<number, AreaErr> {
       if (w === 0 || h === 0) return { ok: false, error: { kind: "rect", rect: "degenerate" } };
       return { ok: true, value: w * h };
     }
+    case "triangle":
+      return { ok: true, value: 0 };
   }
 }

@@ -1,7 +1,7 @@
-// @case    flow-in-generic-fn
+// @case    tryflow-in-generic-fn
 // @feature hand-written early-return chain, generic
 // @kind    baseline
-// @title   flow called on steps whose types are unresolved generics
+// @title   tryFlow called on steps whose types are unresolved generics
 // @intent  Write a reusable helper that extends whatever step it is handed.
 
 type Res<T> = { ok: true; value: T } | { ok: false; error: string };

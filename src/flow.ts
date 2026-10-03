@@ -11,33 +11,33 @@ export type Step<A, B, E> = (input: A) => Result<B, E>;
  * once, assigned to a constant with a declared type, and each step infers its types from it:
  *
  * ```ts
- * const listed: (items: readonly string[]) => Result<string, Sum<{ empty: Unit }>> = flow(
+ * const listed: (items: readonly string[]) => Result<string, Sum<{ empty: Unit }>> = tryFlow(
  *   rejectIf((items) => items.length === 0, "empty"),
  *   map((items) => items.join(", ")),
  * );
  * ```
  */
-export function flow<A, B, E1>(s1: Step<A, B, E1>): Step<A, B, E1>;
-export function flow<A, B, C, E1, E2>(s1: Step<A, B, E1>, s2: Step<B, C, E2>): Step<A, C, E1 | E2>;
-export function flow<A, B, C, D, E1, E2, E3>(
+export function tryFlow<A, B, E1>(s1: Step<A, B, E1>): Step<A, B, E1>;
+export function tryFlow<A, B, C, E1, E2>(s1: Step<A, B, E1>, s2: Step<B, C, E2>): Step<A, C, E1 | E2>;
+export function tryFlow<A, B, C, D, E1, E2, E3>(
   s1: Step<A, B, E1>,
   s2: Step<B, C, E2>,
   s3: Step<C, D, E3>,
 ): Step<A, D, E1 | E2 | E3>;
-export function flow<A, B, C, D, F, E1, E2, E3, E4>(
+export function tryFlow<A, B, C, D, F, E1, E2, E3, E4>(
   s1: Step<A, B, E1>,
   s2: Step<B, C, E2>,
   s3: Step<C, D, E3>,
   s4: Step<D, F, E4>,
 ): Step<A, F, E1 | E2 | E3 | E4>;
-export function flow<A, B, C, D, F, G, E1, E2, E3, E4, E5>(
+export function tryFlow<A, B, C, D, F, G, E1, E2, E3, E4, E5>(
   s1: Step<A, B, E1>,
   s2: Step<B, C, E2>,
   s3: Step<C, D, E3>,
   s4: Step<D, F, E4>,
   s5: Step<F, G, E5>,
 ): Step<A, G, E1 | E2 | E3 | E4 | E5>;
-export function flow<A, B, C, D, F, G, H, E1, E2, E3, E4, E5, E6>(
+export function tryFlow<A, B, C, D, F, G, H, E1, E2, E3, E4, E5, E6>(
   s1: Step<A, B, E1>,
   s2: Step<B, C, E2>,
   s3: Step<C, D, E3>,
@@ -45,7 +45,7 @@ export function flow<A, B, C, D, F, G, H, E1, E2, E3, E4, E5, E6>(
   s5: Step<F, G, E5>,
   s6: Step<G, H, E6>,
 ): Step<A, H, E1 | E2 | E3 | E4 | E5 | E6>;
-export function flow(...steps: readonly Step<unknown, unknown, unknown>[]): Step<unknown, unknown, unknown> {
+export function tryFlow(...steps: readonly Step<unknown, unknown, unknown>[]): Step<unknown, unknown, unknown> {
   return (input) => {
     // A loop, not `reduce`: that adds two stack frames (`reduce` and its callback) to every chain a
     // recursive step passes through, and recursion in this style already runs deep.

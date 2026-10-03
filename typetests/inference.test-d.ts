@@ -2,9 +2,9 @@ import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   mapError, wrapError,
-  flow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
+  tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
   entries, type Entry,
-  zoom, over, matchTag,
+  tryOver, over, tryMatch,
   type Ok, type Err, type Result, type At, type Wrapped,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
@@ -114,7 +114,7 @@ const m1Probe: number = step(action);
 
 // ── T9: multi-step Result/Option composition via early-return. The return type is the union of
 // every branch's outcome, one sum type at a time; T12 covers that same shape through
-// flow.
+// tryFlow.
 type NotFoundErr = Sum<{ not_found: { id: number } }>;
 declare function parseId(s: string): Result<number, ParseErr>;
 declare function findUser(id: number): Result<{ name: string }, NotFoundErr>;
@@ -193,20 +193,20 @@ type Joined = Sum<{ a: number }> | Sum<{ b: string }>;
 const fannedAsJoined: Joined = variant("a", 1) as Fanned;
 const joinedAsFanned: Fanned = variant("b", "x") as Joined;
 
-// ── T12: flow -- the two Result steps from T9, composed instead of early-returned
+// ── T12: tryFlow: the two Result steps from T9, composed instead of early-returned
 declare function chargeGateway(id: number, cents: number): Result<{ receiptId: string }, ParseErr>;
-const p1 = flow(parseId, findUser);
+const p1 = tryFlow(parseId, findUser);
 const p1Probe: Step<string, { name: string }, ParseErr | NotFoundErr> = p1;
 
-const p2: Step<string, { receiptId: string }, ParseErr> = flow(parseId, (id) => chargeGateway(id, 500));
+const p2: Step<string, { receiptId: string }, ParseErr> = tryFlow(parseId, (id) => chargeGateway(id, 500));
 
 // a plain function joins through map, mixed with a Result step
-const p3: Step<number, number, "negative"> = flow(
+const p3: Step<number, number, "negative"> = tryFlow(
   map((n) => n + 1),
   (n) => (n > 0 ? ok(n) : err("negative")),
 );
 
-// flow composes steps whose types are still generic: inverting an isomorphism builds a step out
+// tryFlow composes steps whose types are still generic: inverting an isomorphism builds a step out
 // of two it was handed
 type Isomorphism<A, B, K> = {
   canon: (a: A) => Result<K, string>;
@@ -215,7 +215,7 @@ type Isomorphism<A, B, K> = {
 };
 function inverse<A, B, K>(i: Isomorphism<A, B, K>): Isomorphism<B, A, K> {
   return {
-    canon: flow(i.undo, i.canon),
+    canon: tryFlow(i.undo, i.canon),
     do: i.undo,
     undo: i.do,
   };
@@ -302,7 +302,7 @@ function infallible(x: number): Result<number, never> {
 const infallibleValue: number = infallible(5).ok;
 
 // a chain of steps that can't fail reads the same way
-const flowValue: string = flow(map((r: { id: string }) => r.id))({ id: "x" }).ok;
+const flowValue: string = tryFlow(map((r: { id: string }) => r.id))({ id: "x" }).ok;
 
 // the collapse must not leak into a generic `E`: a function still building a `Result<T, E>`
 // for an unresolved `E` accepts `err(...)` with no assertion at the construction site.
@@ -386,31 +386,31 @@ const t17Mapped: Result<number, string> = mapError(t17Fallible, (e) => `${e}!`);
 declare const t17Located: At<string, "bad">;
 const t17LocatedError: "bad" = t17Located.error;
 
-// ── T18: flow -- a chain built once on a declared constant, each step inferring from it
+// ── T18: tryFlow: a chain built once on a declared constant, each step inferring from it
 type T18ListErr = Sum<{ empty: Unit }>;
-const t18Listed: (items: readonly string[]) => Result<string, T18ListErr> = flow(
+const t18Listed: (items: readonly string[]) => Result<string, T18ListErr> = tryFlow(
   rejectIf((items) => items.length === 0, "empty"),
   map((items) => items.join(", ")),
 );
 
 // the chain's error is every step's error; a total step wrapped by `attempt` adds no case
 type T18Err = Sum<{ parse: ParseErr; tooBig: Unit }>;
-const t18Parsed: Step<string, number, T18Err> = flow(
+const t18Parsed: Step<string, number, T18Err> = tryFlow(
   attempt(parseId, "parse"),
   rejectIf((n) => n > 100, "tooBig"),
   attempt(map((n) => n * 2), "double"),
 );
 
 // a chain of steps that can't fail can't fail either, so `.ok` reads without narrowing
-const t18Total = flow(map((n: number) => n + 1), map((n) => `${n}`));
+const t18Total = tryFlow(map((n: number) => n + 1), map((n) => `${n}`));
 const t18TotalValue: string = t18Total(1).ok;
 
 // an inline step returning only `ok(...)` adds no error case
-const t18OkOnly: Step<number, number, never> = flow((n: number) => ok(n + 1));
+const t18OkOnly: Step<number, number, never> = tryFlow((n: number) => ok(n + 1));
 
 // a step taking the wrong input is reported on the step before it: the annotated parameter fixes
 // the type between them, and the earlier step is the one that fails to produce it
-const t18Mismatch: Step<string, number, ParseErr> = flow(
+const t18Mismatch: Step<string, number, ParseErr> = tryFlow(
   // @ts-expect-error parseId produces a number, but the next step takes a string
   parseId,
   map((id: string) => id.length),
@@ -436,36 +436,36 @@ const t18Entries = entries({ a: 1, b: "x" });
 const t18Entry: { readonly key: "a"; readonly payload: 1 } | { readonly key: "b"; readonly payload: "x" } =
   t18Entries[0];
 
-// and flow composes steps whose types are still generic
+// and tryFlow composes steps whose types are still generic
 function t18Compose<A, B, C, E>(f: Step<A, B, E>, g: Step<B, C, E>): Step<A, C, E> {
-  return flow(f, g);
+  return tryFlow(f, g);
 }
 
-// ── T19: zoom and over -- one part of a structure updated, the whole rebuilt around it
+// ── T19: tryOver and over: one part of a structure updated, the whole rebuilt around it
 type T19Order = { code: string; payment: { card: { number: string } } };
 type T19Parsed = { code: string; payment: { card: { number: number } } };
-const t19Parse: Step<T19Order, T19Parsed, never> = zoom("payment", zoom("card", zoom("number", map(Number))));
+const t19Parse: Step<T19Order, T19Parsed, never> = tryOver("payment", tryOver("card", tryOver("number", map(Number))));
 
 // the step's error passes through as the zoomed step's own
-const t19Fallible: Step<T19Order, T19Order, ParseErr> = zoom("code", (code: string) =>
+const t19Fallible: Step<T19Order, T19Order, ParseErr> = tryOver("code", (code: string) =>
   code === "" ? errVariant("parse", { input: code }) : ok(code),
 );
 
 // a tuple keeps its other positions
 type T19Pair = readonly [string, number];
-const t19Bumped: Step<T19Pair, readonly [string, string], never> = zoom(1, map((n) => `${n + 1}`));
+const t19Bumped: Step<T19Pair, readonly [string, string], never> = tryOver(1, map((n) => `${n + 1}`));
 const t19Over: (pair: T19Pair) => readonly [string, boolean] = over(1, (n) => n > 0);
 
 // a wrong key is reported where it is written
 // @ts-expect-error `crad` is not a key of the payment
-const t19Typo: Step<T19Order, T19Parsed, never> = zoom("payment", zoom("crad", zoom("number", map(Number))));
+const t19Typo: Step<T19Order, T19Parsed, never> = tryOver("payment", tryOver("crad", tryOver("number", map(Number))));
 
-// ── T20: matchTag -- a step over a sum, typed from the declared constant
+// ── T20: tryMatch: a step over a sum, typed from the declared constant
 type T20Shape = Sum<{ circle: number; square: number; rect: [number, number]; empty: Unit }>;
 type T20Err = Sum<{ rect: "degenerate" }>;
 
 // inline handlers get their payload types; a handler that can't fail adds no error case
-const t20Area: Step<T20Shape, number, T20Err> = matchTag({
+const t20Area: Step<T20Shape, number, T20Err> = tryMatch({
   circle: (r) => ok(Math.PI * r * r),
   square: (side) => ok(side * side),
   rect: ([w, h]) => (w === 0 || h === 0 ? err("degenerate") : ok(w * h)),
@@ -473,7 +473,7 @@ const t20Area: Step<T20Shape, number, T20Err> = matchTag({
 });
 
 // a match whose handlers can't fail can't fail either
-const t20Total: Step<T20Shape, string, never> = matchTag({
+const t20Total: Step<T20Shape, string, never> = tryMatch({
   circle: () => ok("circle"),
   square: () => ok("square"),
   rect: () => ok("rect"),
@@ -483,13 +483,13 @@ declare const t20Shape: T20Shape;
 const t20TotalValue: string = t20Total(t20Shape).ok;
 
 // @ts-expect-error every tag needs a handler
-const t20Missing: Step<T20Shape, number, never> = matchTag({
+const t20Missing: Step<T20Shape, number, never> = tryMatch({
   circle: (r) => ok(r),
   square: (side) => ok(side),
   rect: ([w]) => ok(w),
 });
 
-const t20Extra: Step<T20Shape, number, never> = matchTag({
+const t20Extra: Step<T20Shape, number, never> = tryMatch({
   circle: (r) => ok(r),
   square: (side) => ok(side),
   rect: ([w]) => ok(w),
@@ -499,7 +499,7 @@ const t20Extra: Step<T20Shape, number, never> = matchTag({
 });
 
 // a rejected handler is the only error: the declaration is not reported a second time
-const t20WrongPayload: Step<T20Shape, number, never> = matchTag({
+const t20WrongPayload: Step<T20Shape, number, never> = tryMatch({
   // @ts-expect-error the circle's payload is a number
   circle: (r: string) => ok(r.length),
   square: (side) => ok(side),
@@ -510,15 +510,15 @@ const t20WrongPayload: Step<T20Shape, number, never> = matchTag({
 // handlers that really succeed with `unknown` keep it, rather than reading as a rejected match
 declare const t20Unknown: Step<number, unknown, unknown>;
 // @ts-expect-error the output is unknown, not number
-const t20UnknownOut: Step<Sum<{ a: number; b: number }>, number, Sum<{ a: unknown; b: unknown }>> = matchTag({
+const t20UnknownOut: Step<Sum<{ a: number; b: number }>, number, Sum<{ a: unknown; b: unknown }>> = tryMatch({
   a: (n: number): Result<unknown, unknown> => t20Unknown(n),
   b: (n: number): Result<unknown, unknown> => t20Unknown(n),
 });
 
 // nested in a declared chain, it takes its input from the step before
-const t20Chained: Step<string, number, T20Err> = flow(
+const t20Chained: Step<string, number, T20Err> = tryFlow(
   map((raw: string): T20Shape => variant("circle", Number(raw))),
-  matchTag({
+  tryMatch({
     circle: (r) => ok(Math.PI * r * r),
     square: (side) => ok(side * side),
     rect: ([w, h]) => (w === 0 || h === 0 ? err("degenerate") : ok(w * h)),

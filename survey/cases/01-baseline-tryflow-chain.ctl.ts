@@ -1,4 +1,4 @@
-// @case    baseline-flow-chain
+// @case    baseline-tryflow-chain
 // @feature hand-written early-return chain
 // @kind    baseline
 // @title   Correct three-step chain

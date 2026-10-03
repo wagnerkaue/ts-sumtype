@@ -5,5 +5,5 @@ export * from "./unwrap";
 export * from "./adapt";
 export * from "./entry";
 export * from "./flow";
-export * from "./zoom";
+export * from "./over";
 export * from "./match";

@@ -1,8 +1,8 @@
-// @case    match-inconsistent-returns
+// @case    trymatch-arm-param-wrong-type
 // @feature switch with a declared return type
 // @kind    mistake
-// @title   Handlers disagree about the result type
-// @intent  Produce a number for every case; one case produces a string.
+// @title   A payload annotated with the wrong type
+// @intent  Name the circle's payload for documentation; the annotation is wrong.
 
 type Res<T, E> = { ok: true; value: T } | { ok: false; error: E };
 
@@ -14,14 +14,16 @@ type AreaErr = { kind: "rect"; rect: "degenerate" };
 
 export function area(s: Shape): Res<number, AreaErr> {
   switch (s.kind) {
-    case "circle":
-      return { ok: true, value: Math.PI * s.circle * s.circle };
+    case "circle": {
+      const r: string = s.circle;
+      return { ok: true, value: r.length };
+    }
     case "square":
       return { ok: true, value: s.square * s.square };
     case "rect": {
       const [w, h] = s.rect;
       if (w === 0 || h === 0) return { ok: false, error: { kind: "rect", rect: "degenerate" } };
-      return { ok: true, value: `${w}x${h}` };
+      return { ok: true, value: w * h };
     }
   }
 }

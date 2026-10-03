@@ -1,4 +1,4 @@
-// @case    flow-step-mismatch
+// @case    tryflow-step-mismatch
 // @feature hand-written early-return chain
 // @kind    mistake
 // @title   A step's input does not match the previous step's output

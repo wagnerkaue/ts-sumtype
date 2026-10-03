@@ -1,7 +1,7 @@
 {
   "tsVersion": "6.0.3",
   "cases": {
-    "baseline-match-exhaustive": {
+    "baseline-trymatch-exhaustive": {
       "anomaly": null,
       "lib": {
         "count": 0,
@@ -26,7 +26,7 @@
         "overload": false
       }
     },
-    "baseline-flow-chain": {
+    "baseline-tryflow-chain": {
       "anomaly": null,
       "lib": {
         "count": 0,
@@ -399,7 +399,7 @@
         "overload": false
       }
     },
-    "match-missing-arm": {
+    "trymatch-missing-arm": {
       "anomaly": null,
       "lib": {
         "count": 1,
@@ -430,7 +430,7 @@
         "overload": false
       }
     },
-    "match-extra-arm": {
+    "trymatch-extra-arm": {
       "anomaly": null,
       "lib": {
         "count": 1,
@@ -459,7 +459,7 @@
         "overload": false
       }
     },
-    "match-arm-param-wrong-type": {
+    "trymatch-arm-param-wrong-type": {
       "anomaly": null,
       "lib": {
         "count": 1,
@@ -488,7 +488,7 @@
         "overload": false
       }
     },
-    "match-inconsistent-returns": {
+    "trymatch-inconsistent-returns": {
       "anomaly": null,
       "lib": {
         "count": 1,
@@ -519,7 +519,7 @@
         "overload": false
       }
     },
-    "match-untagged-union": {
+    "trymatch-untagged-union": {
       "anomaly": "plain TypeScript accepts this; only the library rejects it",
       "lib": {
         "count": 5,
@@ -924,7 +924,7 @@
         "overload": false
       }
     },
-    "zoom-wrong-key": {
+    "tryover-wrong-key": {
       "anomaly": null,
       "lib": {
         "count": 2,
@@ -954,7 +954,7 @@
         "overload": false
       }
     },
-    "flow-step-mismatch": {
+    "tryflow-step-mismatch": {
       "anomaly": null,
       "lib": {
         "count": 1,
@@ -983,7 +983,7 @@
         "overload": false
       }
     },
-    "flow-too-many-steps": {
+    "tryflow-too-many-steps": {
       "anomaly": "plain TypeScript accepts this; only the library rejects it",
       "lib": {
         "count": 1,
@@ -1010,7 +1010,7 @@
         "overload": false
       }
     },
-    "flow-in-generic-fn": {
+    "tryflow-in-generic-fn": {
       "anomaly": null,
       "lib": {
         "count": 0,
@@ -1035,7 +1035,7 @@
         "overload": false
       }
     },
-    "flow-undeclared": {
+    "tryflow-undeclared": {
       "anomaly": null,
       "lib": {
         "count": 2,

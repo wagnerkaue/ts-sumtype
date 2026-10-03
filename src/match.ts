@@ -32,11 +32,11 @@ type WrappedErrorOf<H> = {
 
 /**
  * A step over the sum `V` that hands each case's payload to the handler for its tag, wrapping the
- * handler's error under that tag. Like `flow`, it is assigned to a constant with a declared type,
+ * handler's error under that tag. Like `tryFlow`, it is assigned to a constant with a declared type,
  * which is where `V` and each handler's payload type come from:
  *
  * ```ts
- * const fee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardErr }>> = matchTag({
+ * const fee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardErr }>> = tryMatch({
  *   cash: () => ok(0),
  *   paypal: () => ok(0.029),
  *   creditCard: (card) => cardFee(card),
@@ -44,7 +44,7 @@ type WrappedErrorOf<H> = {
  * });
  * ```
  */
-export function matchTag<V extends { tag: string }, const H extends HandlersFor<V>>(
+export function tryMatch<V extends { tag: string }, const H extends HandlersFor<V>>(
   handlers: H & NoInfer<NoOtherTags<V, H>>,
 ): Step<V, Settled<H, OutputOf<H>>, Settled<H, WrappedErrorOf<H>>> {
   return (value) => {

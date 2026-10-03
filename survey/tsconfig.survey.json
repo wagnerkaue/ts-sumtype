@@ -12,7 +12,7 @@
       "ts-sumtype/adapt": ["../dist/adapt.d.ts"],
       "ts-sumtype/entry": ["../dist/entry.d.ts"],
       "ts-sumtype/flow": ["../dist/flow.d.ts"],
-      "ts-sumtype/zoom": ["../dist/zoom.d.ts"]
+      "ts-sumtype/over": ["../dist/over.d.ts"]
     },
     "noEmit": true,
     "noUnusedLocals": false,

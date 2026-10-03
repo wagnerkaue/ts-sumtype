@@ -1,4 +1,4 @@
-// @case    flow-undeclared
+// @case    tryflow-undeclared
 // @feature unannotated parameter
 // @kind    mistake
 // @title   Chain built without a declared type

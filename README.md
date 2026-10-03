@@ -534,16 +534,16 @@ function checkout(order: Order): Result<Receipt, CheckoutErr> {
 
 A failure now says where it happened: `error.authorize.declined.reason`. `mapError(result, f)` is the general form, transforming the error with any function. Wrapping a result that can't fail adds no case: `wrapError(processorFee(method), "fee")` is still `Result<number, never>`.
 
-### flow
+### tryFlow
 
-`flow(step1, step2, ...)` composes steps into one step that stops at the first error. It builds the chain, it doesn't run it: assign it to a constant with a declared type, and each step takes its types from that declaration.
+`tryFlow(step1, step2, ...)` composes steps into one step that stops at the first error. It builds the chain, it doesn't run it: assign it to a constant with a declared type, and each step takes its types from that declaration.
 
 ```typescript
-import { flow, map, rejectIf, rejectWith, fromNullable, type Result, type Sum, type Unit } from "ts-sumtype";
+import { tryFlow, map, rejectIf, rejectWith, fromNullable, type Result, type Sum, type Unit } from "ts-sumtype";
 
 type CardNumberErr = Sum<{ empty: Unit; notADigit: string; checksum: Unit }>;
 
-const cardNumber: (raw: string) => Result<string, CardNumberErr> = flow(
+const cardNumber: (raw: string) => Result<string, CardNumberErr> = tryFlow(
   map((raw) => raw.replaceAll(" ", "")),
   rejectIf((digits) => digits === "", "empty"),
   rejectWith((digits) => fromNullable(digits.match(/\D/)?.[0]), "notADigit"),
@@ -566,27 +566,27 @@ Each step takes its function first and its tag last:
 `checkout`, from above, written as a chain:
 
 ```typescript
-const checkout: (order: Order) => Result<Receipt, CheckoutErr> = flow(
-  attempt(zoom("method", authorizeMethod), "authorize"),
+const checkout: (order: Order) => Result<Receipt, CheckoutErr> = tryFlow(
+  attempt(tryOver("method", authorizeMethod), "authorize"),
   attempt(({ method, cents }) => chargeGateway(method, cents), "charge"),
 );
 ```
 
-`zoom`, [below](#zoom-and-over), runs `authorizeMethod` on the order's `method` and keeps the rest of the order. `flow` takes one to six steps. For a longer chain, name a few of its steps as a chain of their own and use that as one step.
+`tryOver`, [below](#tryover-and-over), runs `authorizeMethod` on the order's `method` and keeps the rest of the order. `tryFlow` takes one to six steps. For a longer chain, name a few of its steps as a chain of their own and use that as one step.
 
-### matchTag
+### tryMatch
 
-`matchTag` is a `switch` over a sum in which every case only hands its payload to a function. It takes one handler per tag, gives each the payload of its case, and wraps the handler's error under that tag. A handler that can't fail adds no error case.
+`tryMatch` is a `switch` over a sum in which every case only hands its payload to a function. It takes one handler per tag, gives each the payload of its case, and wraps the handler's error under that tag. A handler that can't fail adds no error case.
 
 ```typescript
-import { matchTag, ok, type Result, type Sum } from "ts-sumtype";
+import { tryMatch, ok, type Result, type Sum } from "ts-sumtype";
 
-const cardFee: (card: { cardNumber: string }) => Result<number, CardNumberErr> = flow(
+const cardFee: (card: { cardNumber: string }) => Result<number, CardNumberErr> = tryFlow(
   (card) => cardNumber(card.cardNumber),
   map((digits) => (digits.startsWith("3") ? 0.035 : 0.024)),
 );
 
-const methodFee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardNumberErr }>> = matchTag({
+const methodFee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardNumberErr }>> = tryMatch({
   cash: () => ok(0),
   paypal: () => ok(0.029),
   creditCard: cardFee,
@@ -594,36 +594,36 @@ const methodFee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: Car
 });
 ```
 
-Like `flow`, it takes its types from the declared constant: each handler's payload, and the error type to check against. A missing handler, a handler for a tag the sum doesn't have, and an error the declared type has no case for are each a compile error. Used as a step inside a declared `flow`, it takes its input type from the step before it. When a case does work of its own rather than delegating, write the `switch`.
+Like `tryFlow`, it takes its types from the declared constant: each handler's payload, and the error type to check against. A missing handler, a handler for a tag the sum doesn't have, and an error the declared type has no case for are each a compile error. Used as a step inside a declared `tryFlow`, it takes its input type from the step before it. When a case does work of its own rather than delegating, write the `switch`.
 
-### zoom and over
+### tryOver and over
 
-`zoom(key, step)` runs a step on one part of a value, an object's key or a tuple's index, and rebuilds the whole around the result without changing the original. A deeper part is reached by nesting, one key per call:
+`tryOver(key, step)` runs a step on one part of a value, an object's key or a tuple's index, and rebuilds the whole around the result without changing the original. A deeper part is reached by nesting, one key per call:
 
 ```typescript
-import { zoom, over, map, type Step } from "ts-sumtype";
+import { tryOver, over, map, type Step } from "ts-sumtype";
 
 type CardForm = { holder: string; card: { number: string; expiry: string } };
 
-const parseForm: Step<CardForm, CardForm, CardNumberErr> = zoom("card", zoom("number", cardNumber));
+const parseForm: Step<CardForm, CardForm, CardNumberErr> = tryOver("card", tryOver("number", cardNumber));
 
 parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30" } });
 // { tag: "ok", ok: { holder: "Ada", card: { number: "4111111111111111", expiry: "12/30" } } }
 ```
 
-The part may change type, and the whole's type follows it: `zoom("card", zoom("number", map(Number)))` produces a form whose card number is a `number`. `over(key, f)` does the same with a plain function, and fits `.map`:
+The part may change type, and the whole's type follows it: `tryOver("card", tryOver("number", map(Number)))` produces a form whose card number is a `number`. `over(key, f)` does the same with a plain function, and fits `.map`:
 
 ```typescript
 forms.map(over("holder", (holder) => holder.toUpperCase()));
 ```
 
-`zoom` takes one key per call rather than a path because of what the compiler can say about it:
+`tryOver` takes one key per call rather than a path because of what the compiler can say about it:
 
 | | Autocomplete on each key | A misspelled key |
 |---|---|---|
-| `zoom("card", zoom("number", f))` | yes | reported at the key, naming the valid keys |
-| `zoom(["card", "number"], f)` | yes | every segment reported as `never` |
-| `zoom("card", "number")(f)` | no | reported on the argument before it |
+| `tryOver("card", tryOver("number", f))` | yes | reported at the key, naming the valid keys |
+| `tryOver(["card", "number"], f)` | yes | every segment reported as `never` |
+| `tryOver("card", "number")(f)` | no | reported on the argument before it |
 
 ### Errors that say where
 
@@ -632,7 +632,7 @@ forms.map(over("holder", (holder) => holder.toUpperCase()));
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
 ```typescript
-import { flow, map, rejectIf, tryFlatMap, matchTag, zoom, ok, type At, type Entry, type Result, type Step, type Sum, type Unit } from "ts-sumtype";
+import { tryFlow, map, rejectIf, tryFlatMap, tryMatch, tryOver, ok, type At, type Entry, type Result, type Step, type Sum, type Unit } from "ts-sumtype";
 
 type Shape = Sum<{ scalar: Unit; object: readonly Entry<Shape>[] }>;
 type Column = readonly string[];
@@ -644,17 +644,17 @@ function columns(shape: Shape): Result<readonly Column[], ColumnsErr> {
   return columnsByTag(shape);
 }
 
-const fieldColumns: Step<Entry<Shape>, readonly Column[], ColumnsErr> = flow(
-  zoom("payload", columns),
+const fieldColumns: Step<Entry<Shape>, readonly Column[], ColumnsErr> = tryFlow(
+  tryOver("payload", columns),
   map(({ key, payload }) => payload.map((path) => [key, ...path])),
 );
 
-const objectColumns: Step<readonly Entry<Shape>[], readonly Column[], ObjectErr> = flow(
+const objectColumns: Step<readonly Entry<Shape>[], readonly Column[], ObjectErr> = tryFlow(
   rejectIf((fields) => fields.length === 0, "noFields"),
   tryFlatMap(fieldColumns, "field"),
 );
 
-const columnsByTag: Step<Shape, readonly Column[], ColumnsErr> = matchTag({
+const columnsByTag: Step<Shape, readonly Column[], ColumnsErr> = tryMatch({
   scalar: () => ok([[]]),
   object: objectColumns,
 });
@@ -675,15 +675,15 @@ A chain reads its steps when it's built, so the constants are declared children 
 
 | Step | Takes → gives | Its error |
 |---|---|---|
-| `flow(s1, …, s6)` | `s1`'s input → the last step's output | every step's error |
+| `tryFlow(s1, …, s6)` | `s1`'s input → the last step's output | every step's error |
 | `map(f)` | `f`'s input → `f`'s output | none |
 | `attempt(step, tag)` | as `step` | `step`'s, under `tag` |
 | `rejectIf(fails, tag)` | its input, unchanged | `tag`, with no payload |
 | `rejectWith(problem, tag)` | its input, unchanged | `tag`, carrying the problem found |
 | `tryFlatMap(step, tag)` | entries → every entry's output, concatenated | `tag`, carrying `{ at: key, error }` |
 | `prepend(items)` | a list → the list with `items` first | none |
-| `matchTag(handlers)` | a sum → any handler's output | each handler's, under its tag |
-| `zoom(key, step)` | a value → the value with that part replaced | `step`'s |
+| `tryMatch(handlers)` | a sum → any handler's output | each handler's, under its tag |
+| `tryOver(key, step)` | a value → the value with that part replaced | `step`'s |
 
 ---
 
@@ -779,7 +779,7 @@ This is the same representation this README argued against building new code aro
 - **`"tag"` is a reserved case name.** Its payload key would collide with the discriminant, so `Sum<{ tag: T }>` intersects the discriminant with `T` on the same field; for most `T` that leaves `tag` uninhabitable. Pick any other case name.
 - **Variance is covariant.** `Result<Receipt, never>` is assignable to `Result<Receipt, GatewayErr>`; the reverse (narrowing) is a type error.
 - **`Frozen` reaches one unrolling of a recursive type.** `Frozen<Sum<{ ... }>>` at a declaration is frozen all the way down; `Frozen<SomeRecursiveTypeDeclaredElsewhere>` leaves that type's inner occurrences mutable, see [Frozen](#frozen).
-- **TypeScript 5.4 or later, Node 20 or later.** `wrapError` and `matchTag` use `NoInfer`, which TypeScript 5.4 introduced, and `zoom` rebuilds a tuple with `Array.prototype.with`, which Node 20 introduced.
+- **TypeScript 5.4 or later, Node 20 or later.** `wrapError` and `tryMatch` use `NoInfer`, which TypeScript 5.4 introduced, and `tryOver` rebuilds a tuple with `Array.prototype.with`, which Node 20 introduced.
 - **Payloads must be JSON-safe** to survive a `JSON.stringify` / `JSON.parse` round-trip: functions, symbols, and `bigint` don't survive it, and neither does `undefined`, which is silently dropped from whatever key holds it. That last one is why empty payloads are typed `Unit`/`null` rather than `undefined`, see [Unit](#unit).
 
 ---
@@ -793,7 +793,7 @@ import { ok } from "ts-sumtype/result";
 import { variant } from "ts-sumtype/variant";
 ```
 
-`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/flow`, `/match`, `/zoom`, `/entry`.
+`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/flow`, `/match`, `/over`, `/entry`.
 
 ---
 

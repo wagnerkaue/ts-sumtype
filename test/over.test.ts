@@ -1,24 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { ok, err, map, zoom, over, type Result, type Step } from "../src/index";
+import { ok, err, map, tryOver, over, type Result, type Step } from "../src/index";
 
 type Pair = readonly [string, number];
 type Order = { code: string; payment: { card: { number: string } } };
 type ParsedOrder = { code: string; payment: { card: { number: number } } };
 
-describe("zoom", () => {
+describe("tryOver", () => {
   it("runs the step on one element of a tuple", () => {
-    const increment: Step<Pair, Pair, never> = zoom(1, (n) => ok(n + 1));
+    const increment: Step<Pair, Pair, never> = tryOver(1, (n) => ok(n + 1));
     expect(increment(["a", 1])).toEqual(ok(["a", 2]));
   });
 
   it("passes the step's error through", () => {
     const fail = (_n: number): Result<number, string> => err("bad");
-    const failing: Step<Pair, Pair, string> = zoom(1, fail);
+    const failing: Step<Pair, Pair, string> = tryOver(1, fail);
     expect(failing(["a", 1])).toEqual(err("bad"));
   });
 
   it("nests, changing the type deep inside without touching the original", () => {
-    const parseNumber: Step<Order, ParsedOrder, never> = zoom("payment", zoom("card", zoom("number", map(Number))));
+    const parseNumber: Step<Order, ParsedOrder, never> = tryOver("payment", tryOver("card", tryOver("number", map(Number))));
     const order: Order = { code: "A-1", payment: { card: { number: "4111" } } };
     expect(parseNumber(order)).toEqual(ok({ code: "A-1", payment: { card: { number: 4111 } } }));
     expect(order.payment.card.number).toBe("4111");

@@ -1,8 +1,8 @@
-// @case    match-arm-param-wrong-type
+// @case    baseline-trymatch-exhaustive
 // @feature switch with a declared return type
-// @kind    mistake
-// @title   A payload annotated with the wrong type
-// @intent  Name the circle's payload for documentation; the annotation is wrong.
+// @kind    baseline
+// @title   Correct exhaustive match
+// @intent  Reference point: every case handled, every payload used correctly.
 
 type Res<T, E> = { ok: true; value: T } | { ok: false; error: E };
 
@@ -14,10 +14,8 @@ type AreaErr = { kind: "rect"; rect: "degenerate" };
 
 export function area(s: Shape): Res<number, AreaErr> {
   switch (s.kind) {
-    case "circle": {
-      const r: string = s.circle;
-      return { ok: true, value: r.length };
-    }
+    case "circle":
+      return { ok: true, value: Math.PI * s.circle * s.circle };
     case "square":
       return { ok: true, value: s.square * s.square };
     case "rect": {

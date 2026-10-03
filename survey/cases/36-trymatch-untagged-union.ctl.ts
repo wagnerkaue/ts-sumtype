@@ -1,9 +1,9 @@
-// @case    match-untagged-union
+// @case    trymatch-untagged-union
 // @feature switch
 // @kind    mistake
-// @title   matchTag applied to a union discriminated by `kind`
+// @title   tryMatch applied to a union discriminated by `kind`
 // @intent  Match over an existing union from another codebase that uses `kind`, not `tag`.
-// @note    A switch works over any discriminant, so this half compiles; the pair records what matchTag reports.
+// @note    A switch works over any discriminant, so this half compiles; the pair records what tryMatch reports.
 
 type Res<T> = { ok: true; value: T };
 

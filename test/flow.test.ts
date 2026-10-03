@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   ok, err, errVariant, some, none, entries,
-  flow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap,
+  tryFlow, map, prepend, attempt, rejectWith, rejectIf, tryFlatMap,
 } from "../src/index";
 
-describe("flow", () => {
+describe("tryFlow", () => {
   it("passes each step's value to the next", () => {
-    const step = flow(
+    const step = tryFlow(
       map((n: number) => n + 1),
       map((n) => n * 10),
     );
@@ -16,7 +16,7 @@ describe("flow", () => {
 
   it("stops at the first error", () => {
     const after = vi.fn((n: number) => n);
-    const step = flow(
+    const step = tryFlow(
       rejectIf((n: number) => n === 1, "one"),
       map(after),
     );
