@@ -1288,6 +1288,35 @@
         "truncated": false,
         "overload": false
       }
+    },
+    "step-missing-tag": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2362"
+        ],
+        "chars": 104,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2362"
+        ],
+        "chars": 104,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
     }
   }
 }

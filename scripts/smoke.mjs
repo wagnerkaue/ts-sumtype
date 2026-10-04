@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch } from "../dist/index.js";
+import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch, tryMap, tryReduce } from "../dist/index.js";
 
 function pipeline(x) {
   const doubled = x > 0 ? ok(x * 10) : errVariant("neg", null);
@@ -28,6 +28,8 @@ assert.deepEqual(tryOver("card", tryOver(0, step(Number)))({ card: ["4111", "x"]
 assert.equal(match({ square: () => 4, triangle: () => 3 })(variant("triangle")), 3);
 const doubled = match({ leaf: (n) => n, wrap: flow(lazy(() => doubled), (n) => n * 2) });
 assert.equal(doubled(variant("wrap", variant("leaf", 3))), 6);
+assert.deepEqual(tryMap((n) => (n < 0 ? { tag: "error", error: "negative" } : { tag: "ok", ok: n * 2 }), "item")([1, -1]), { tag: "error", error: { tag: "item", item: { at: 1, error: "negative" } } });
+assert.deepEqual(tryReduce((sum, n) => ({ tag: "ok", ok: sum + n }), 0, "term")([1, 2, 3]), { tag: "ok", ok: 6 });
 const size = tryMatch({ one: step(() => 1), many: rejectIf((n) => n < 0, "negative") });
 assert.deepEqual(size(variant("many", 3)), { tag: "ok", ok: 3 });
 assert.deepEqual(size(variant("many", -1)), { tag: "error", error: { tag: "many", many: { tag: "negative", negative: null } } });

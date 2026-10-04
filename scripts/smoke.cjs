@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
-const { ok, some, none, someOr, variant, unwrap, fromFlat, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch } = require("../dist/index.cjs");
+const { ok, some, none, someOr, variant, unwrap, fromFlat, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch, tryMap, tryReduce } = require("../dist/index.cjs");
 const { tryFlow: flowEntry, step: stepEntry } = require("../dist/flow.cjs");
+const { tryMap: tryMapEntry } = require("../dist/list.cjs");
 
 assert.equal(unwrap(ok(2)), 2);
 assert.equal(unwrap(someOr(some(3), "missing")), 3);
@@ -19,8 +20,11 @@ assert.deepEqual(tryOver("card", tryOver(0, step(Number)))({ card: ["4111", "x"]
 assert.equal(match({ square: () => 4, triangle: () => 3 })(variant("triangle")), 3);
 const doubled = match({ leaf: (n) => n, wrap: flow(lazy(() => doubled), (n) => n * 2) });
 assert.equal(doubled(variant("wrap", variant("leaf", 3))), 6);
+assert.deepEqual(tryMap((n) => (n < 0 ? { tag: "error", error: "negative" } : { tag: "ok", ok: n * 2 }), "item")([1, -1]), { tag: "error", error: { tag: "item", item: { at: 1, error: "negative" } } });
+assert.deepEqual(tryReduce((sum, n) => ({ tag: "ok", ok: sum + n }), 0, "term")([1, 2, 3]), { tag: "ok", ok: 6 });
 const size = tryMatch({ one: step(() => 1), many: rejectIf((n) => n < 0, "negative") });
 assert.deepEqual(size(variant("many", 3)), { tag: "ok", ok: 3 });
 assert.deepEqual(size(variant("many", -1)), { tag: "error", error: { tag: "many", many: { tag: "negative", negative: null } } });
 assert.deepEqual(flowEntry(stepEntry((n) => n + 1))(1), { tag: "ok", ok: 2 });
+assert.deepEqual(tryMapEntry(stepEntry((n) => n + 1), "item")([1]), { tag: "ok", ok: [2] });
 console.log("smoke cjs: ok");

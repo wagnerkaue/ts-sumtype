@@ -2,7 +2,7 @@ import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   mapError, wrapError,
-  flow, tryFlow, step, lazy, prepend, rejectWith, rejectIf, tryFlatMap, type Fallible,
+  flow, tryFlow, step, lazy, prepend, rejectWith, rejectIf, tryReduce, tryMap, tryFlatMap, type Fallible,
   tryOver, over, match, tryMatch,
   type Ok, type Err, type Result, type At, type Wrapped, type Located,
   some, none, isSome, isNone, someOr,
@@ -621,6 +621,38 @@ const t23Doubled: (nest: T23Nest) => number = match({
   // @ts-expect-error without lazy, the constant is read while it is being declared
   wrap: flow(t23Doubled, (n) => n * 2),
 });
+
+// ── T24: tryMap and tryReduce, and step's two forms
+type T24Item = { readonly key: string; readonly size: number };
+const t24Size = (item: T24Item) => (item.size < 0 ? err("negative") : ok(item.size));
+
+const t24ByIndex: Fallible<readonly T24Item[], readonly number[], Sum<{ item: At<number, "negative"> }>> = tryMap(
+  t24Size,
+  "item",
+);
+const t24ByKey: Fallible<readonly T24Item[], readonly number[], Sum<{ item: At<string, "negative"> }>> = tryMap(
+  t24Size,
+  "item",
+  (item) => item.key,
+);
+const t24Total: Fallible<readonly T24Item[], readonly string[], never> = tryMap(step((item: T24Item) => item.key), "item");
+const t24TotalValue: readonly string[] = t24Total([]).ok;
+
+const t24Sum: Fallible<readonly T24Item[], number, Sum<{ term: At<number, "negative"> }>> = tryReduce(
+  (sum, item) => (item.size < 0 ? err("negative") : ok(sum + item.size)),
+  0,
+  "term",
+);
+
+// generic code names its result with Located
+function t24Each<N, B, E>(f: Fallible<N, B, E>): Fallible<readonly N[], readonly B[], Wrapped<"each", Located<number, E>>> {
+  return tryMap(f, "each");
+}
+
+// @ts-expect-error a tag is for a fallible function; this one can't fail
+const t24TaggedTotal: Fallible<number, number, never> = step((n: number) => n + 1, "inc");
+// @ts-expect-error without its tag, the fallible function's Result becomes the success value
+const t24MissingTag: Fallible<string, number, Sum<{ parse: ParseErr }>> = tryFlow(step(parseId));
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.
