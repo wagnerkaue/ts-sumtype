@@ -1231,6 +1231,35 @@
         "overload": false
       }
     },
+    "tryflatmap-located-by-index": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 611,
+        "lines": 5,
+        "depth": 4,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2322"
+        ],
+        "chars": 49,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
     "recursive-payload-unnarrowed": {
       "anomaly": null,
       "lib": {

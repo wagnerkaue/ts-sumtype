@@ -3,7 +3,7 @@ export * from "./result";
 export * from "./option";
 export * from "./unwrap";
 export * from "./adapt";
-export * from "./entry";
+export * from "./list";
 export * from "./flow";
 export * from "./over";
 export * from "./match";

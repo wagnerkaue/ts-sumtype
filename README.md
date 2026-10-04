@@ -649,27 +649,28 @@ parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30
 
 ### Errors that say where
 
-`At<L, E>` is an error together with where it happened: `{ at, error }`. `tryFlatMap(step, tag)` runs a step on every entry of a list and concatenates what each returns. The first entry that fails stops it, and its error comes back under `tag`, located by the entry's key. Entries are `Entry<V>`, `{ key, payload }`, the ordered form of a record that `entries(record)` produces. `prepend(items)` puts items ahead of a list, and joins a chain of steps through `map`.
+`At<L, E>` is an error together with where it happened: `{ at, error }`. `tryFlatMap(f, tag, at?)` runs a fallible function on every item of a list and concatenates what each returns. The first item that fails stops it, and its error comes back under `tag`, located at the item's index, or at `at(item)` when given. `prepend(items)` puts items ahead of a list, and joins a `try` composition through `step`.
 
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
 ```typescript
-import { tryFlow, step, lazy, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Entry, type Fallible, type Sum, type Unit } from "ts-sumtype";
+import { tryFlow, step, lazy, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Fallible, type Sum, type Unit } from "ts-sumtype";
 
-type Shape = Sum<{ scalar: Unit; object: readonly Entry<Shape>[] }>;
+type Field = { readonly key: string; readonly shape: Shape };
+type Shape = Sum<{ scalar: Unit; object: readonly Field[] }>;
 type Column = readonly string[];
 
 type ColumnsErr = Sum<{ object: ObjectErr }>;
 type ObjectErr = Sum<{ noFields: Unit; field: At<string, ColumnsErr> }>;
 
-const fieldColumns: Fallible<Entry<Shape>, readonly Column[], ColumnsErr> = tryFlow(
-  tryOver("payload", lazy(() => columns)),
-  step(({ key, payload }) => payload.map((path) => [key, ...path])),
+const fieldColumns: Fallible<Field, readonly Column[], ColumnsErr> = tryFlow(
+  tryOver("shape", lazy(() => columns)),
+  step(({ key, shape }) => shape.map((path) => [key, ...path])),
 );
 
-const objectColumns: Fallible<readonly Entry<Shape>[], readonly Column[], ObjectErr> = tryFlow(
+const objectColumns: Fallible<readonly Field[], readonly Column[], ObjectErr> = tryFlow(
   rejectIf((fields) => fields.length === 0, "noFields"),
-  tryFlatMap(fieldColumns, "field"),
+  tryFlatMap(fieldColumns, "field", (field) => field.key),
 );
 
 const columns: Fallible<Shape, readonly Column[], ColumnsErr> = tryMatch({
@@ -698,7 +699,7 @@ A chain reads its functions when it's built, so the constants are declared child
 | `step(f, tag)` | as `f` | `f`'s, under `tag` |
 | `rejectIf(fails, tag)` | its input, unchanged | `tag`, with no payload |
 | `rejectWith(problem, tag)` | its input, unchanged | `tag`, carrying the problem found |
-| `tryFlatMap(step, tag)` | entries → every entry's output, concatenated | `tag`, carrying `{ at: key, error }` |
+| `tryFlatMap(f, tag, at?)` | items → every item's output, concatenated | `tag`, carrying `{ at, error }`, at the index or `at(item)` |
 | `tryMatch(handlers)` | a sum → any handler's output | each handler's, under its tag |
 | `tryOver(key, f)` | a value → the value with that part replaced | `f`'s |
 
@@ -810,7 +811,7 @@ import { ok } from "ts-sumtype/result";
 import { variant } from "ts-sumtype/variant";
 ```
 
-`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/flow`, `/match`, `/over`, `/entry`.
+`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/flow`, `/match`, `/over`, `/list`.
 
 ---
 

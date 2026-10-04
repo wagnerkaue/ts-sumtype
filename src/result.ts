@@ -52,6 +52,12 @@ export function isErr<T, E>(r: Result<T, E>): r is Err<E> {
 export type At<L, E> = { readonly at: L; readonly error: E };
 
 /**
+ * `At<L, E>`, or `never` when `E` is: an item that can't fail has no failure to locate. Generic code
+ * locating an error names its result with this type, as with `Wrapped`.
+ */
+export type Located<L, E> = [E] extends [never] ? never : At<L, E>;
+
+/**
  * `E` as the payload of a case tagged `K`, or `never` when `E` is: wrapping an error that can't
  * happen adds no case. Generic code wrapping an error names its result with this type, which is
  * what lets it return `wrapError(...)` without a cast.

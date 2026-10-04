@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
-  ok, err, errVariant, some, none, entries, variant,
-  flow, tryFlow, step, lazy, prepend, rejectWith, rejectIf, tryFlatMap, match, tryMatch,
+  ok, err, errVariant, some, none, variant,
+  flow, tryFlow, step, lazy, prepend, rejectWith, rejectIf, match, tryMatch,
   type Fallible, type Sum,
 } from "../src/index";
 
@@ -78,30 +78,6 @@ describe("rejectWith", () => {
 describe("rejectIf", () => {
   it("passes the value on when the check does not hold", () => {
     expect(rejectIf((n: number) => n === 1, "one")(2)).toEqual(ok(2));
-  });
-});
-
-describe("tryFlatMap", () => {
-  it("concatenates every entry's results", () => {
-    const pairs = tryFlatMap(({ key, payload }) => ok([key, payload]), "item");
-    expect(pairs(entries({ a: 1, b: 2 }))).toEqual(ok(["a", 1, "b", 2]));
-  });
-
-  it("locates the first failing entry by its key", () => {
-    const withoutTwo = tryFlatMap(
-      ({ payload }: { key: string; payload: number }) => (payload === 2 ? err("two") : ok([payload])),
-      "item",
-    );
-    expect(withoutTwo(entries({ a: 1, b: 2, c: 3 }))).toEqual(errVariant("item", { at: "b", error: "two" }));
-  });
-});
-
-describe("entries", () => {
-  it("lists a record's keys and payloads in its own order", () => {
-    expect(entries({ code: 1, name: 2 })).toEqual([
-      { key: "code", payload: 1 },
-      { key: "name", payload: 2 },
-    ]);
   });
 });
 

@@ -3,9 +3,8 @@ import {
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   mapError, wrapError,
   flow, tryFlow, step, lazy, prepend, rejectWith, rejectIf, tryFlatMap, type Fallible,
-  entries, type Entry,
   tryOver, over, match, tryMatch,
-  type Ok, type Err, type Result, type At, type Wrapped,
+  type Ok, type Err, type Result, type At, type Wrapped, type Located,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
   unwrap, unwrapOr, expect, fromNullable,
@@ -422,19 +421,29 @@ const t18Dotted: Fallible<readonly string[], readonly string[], Sum<{ dotInSegme
 const t18Prepended: (rest: readonly number[]) => readonly number[] = prepend([0]);
 const t18PrependStep: Fallible<readonly number[], readonly number[], never> = step(prepend([0]));
 
-// tryFlatMap locates a failure by the entry's key, and a total step locates nothing
-type T18ItemErr = Sum<{ item: At<string, "two"> }>;
-const t18Items: Fallible<readonly Entry<number>[], readonly number[], T18ItemErr> = tryFlatMap(
-  ({ payload }) => (payload === 2 ? err("two") : ok([payload])),
+// tryFlatMap locates a failure at the item's index, or at at(item); a function that can't fail locates nothing
+type T18Item = { readonly key: string; readonly size: number };
+const t18ByIndex: Fallible<readonly T18Item[], readonly number[], Sum<{ item: At<number, "two"> }>> = tryFlatMap(
+  (item: T18Item) => (item.size === 2 ? err("two") : ok([item.size])),
   "item",
 );
-const t18AllItems = tryFlatMap(step(({ payload }: Entry<number>) => [payload]), "item");
+const t18ByKey: Fallible<readonly T18Item[], readonly number[], Sum<{ item: At<string, "two"> }>> = tryFlatMap(
+  (item: T18Item) => (item.size === 2 ? err("two") : ok([item.size])),
+  "item",
+  (item) => item.key,
+);
+const t18AllItems = tryFlatMap(step((item: T18Item) => [item.size]), "item");
 const t18AllItemsValue: readonly number[] = t18AllItems([]).ok;
 
-// entries keeps each key paired with its own payload type
-const t18Entries = entries({ a: 1, b: "x" });
-const t18Entry: { readonly key: "a"; readonly payload: 1 } | { readonly key: "b"; readonly payload: "x" } =
-  t18Entries[0];
+// a location of another type than the declared one is rejected, the index included
+// @ts-expect-error at returns a string, the declaration expects an index
+const t18WrongLocation: Fallible<readonly T18Item[], readonly number[], Sum<{ item: At<number, "two"> }>> =
+  tryFlatMap((item: T18Item) => (item.size === 2 ? err("two") : ok([item.size])), "item", (item) => item.key);
+// @ts-expect-error without at, the location is the index, not the key the declaration expects
+const t18MissingAt: Fallible<readonly T18Item[], readonly number[], Sum<{ item: At<string, "two"> }>> = tryFlatMap(
+  (item: T18Item) => (item.size === 2 ? err("two") : ok([item.size])),
+  "item",
+);
 
 // and tryFlow composes steps whose types are still generic
 function t18Compose<A, B, C, E>(f: Fallible<A, B, E>, g: Fallible<B, C, E>): Fallible<A, C, E> {
@@ -587,18 +596,19 @@ const t22UnknownAsNumber: (s: Sum<{ a: number; b: number }>) => number = match({
 });
 
 // ── T23: lazy: a chain refers to a constant declared after it
-type T23Shape = Sum<{ scalar: Unit; object: readonly Entry<T23Shape>[] }>;
+type T23Field = { readonly key: string; readonly shape: T23Shape };
+type T23Shape = Sum<{ scalar: Unit; object: readonly T23Field[] }>;
 type T23Column = readonly string[];
 type T23Err = Sum<{ object: T23ObjectErr }>;
 type T23ObjectErr = Sum<{ noFields: Unit; field: At<string, T23Err> }>;
 
-const t23FieldColumns: Fallible<Entry<T23Shape>, readonly T23Column[], T23Err> = tryFlow(
-  tryOver("payload", lazy(() => t23Columns)),
-  step(({ key, payload }) => payload.map((path) => [key, ...path])),
+const t23FieldColumns: Fallible<T23Field, readonly T23Column[], T23Err> = tryFlow(
+  tryOver("shape", lazy(() => t23Columns)),
+  step(({ key, shape }) => shape.map((path) => [key, ...path])),
 );
-const t23ObjectColumns: Fallible<readonly Entry<T23Shape>[], readonly T23Column[], T23ObjectErr> = tryFlow(
+const t23ObjectColumns: Fallible<readonly T23Field[], readonly T23Column[], T23ObjectErr> = tryFlow(
   rejectIf((fields) => fields.length === 0, "noFields"),
-  tryFlatMap(t23FieldColumns, "field"),
+  tryFlatMap(t23FieldColumns, "field", (field) => field.key),
 );
 const t23Columns: Fallible<T23Shape, readonly T23Column[], T23Err> = tryMatch({
   scalar: step(() => [[]]),

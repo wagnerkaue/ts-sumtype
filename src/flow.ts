@@ -1,7 +1,6 @@
 import { variant, unit, type Sum, type Unit } from "./variant";
-import { ok, err, isErr, wrapError, type Result, type At, type Wrapped } from "./result";
+import { ok, err, isErr, wrapError, type Result, type Wrapped } from "./result";
 import { some, none, isSome, type Option } from "./option";
-import { type Entry } from "./entry";
 
 /** A function that may fail, and how: it returns a `Result` carrying either its value or its error. */
 export type Fallible<A, B, E> = (input: A) => Result<B, E>;
@@ -123,27 +122,4 @@ export function rejectIf<A, const K extends string>(
   tag: K,
 ): Fallible<A, A, Sum<Record<K, Unit>>> {
   return rejectWith((input: A) => (fails(input) ? some(unit) : none()), tag);
-}
-
-/** `At<string, E>`, or `never` when `E` is, so a function that can't fail locates nothing. */
-type AtKey<E> = [E] extends [never] ? never : At<string, E>;
-
-/**
- * Runs `f` on every entry and concatenates what each returns. Fails at the first entry that
- * fails, with its error located by the entry's key under `tag`.
- */
-export function tryFlatMap<N extends Entry<unknown>, U, E, const K extends string>(
-  f: Fallible<N, readonly U[], E>,
-  tag: K,
-): Fallible<readonly N[], readonly U[], Wrapped<K, AtKey<E>>> {
-  return (items) => {
-    const collected: U[] = [];
-    for (const item of items) {
-      const result = f(item);
-      // The cast is sound: an error exists here, so `E` is not `never`.
-      if (isErr(result)) return err(variant(tag, { at: item.key, error: result.error })) as never;
-      collected.push(...result.ok);
-    }
-    return ok(collected);
-  };
 }
