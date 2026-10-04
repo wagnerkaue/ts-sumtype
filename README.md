@@ -11,7 +11,7 @@
 npm install ts-sumtype      # or: pnpm add ts-sumtype · yarn add ts-sumtype · bun add ts-sumtype
 ```
 
-[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [Composing steps](#composing-steps) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
+[Sum](#sum) · [Unit](#unit) · [Frozen](#frozen) · [Reading a variant](#reading-a-variant) · [isVariant](#isvariant) · [Result](#result) · [Option](#option) · [Working across Result and Option](#working-across-result-and-option) · [Composing fallible functions](#composing-fallible-functions) · [Adapting existing data](#adapting-existing-data) · [Notes](#notes) · [Entry points](#entry-points)
 
 ```typescript
 import { variant, type Sum, type Unit } from "ts-sumtype";
@@ -372,7 +372,7 @@ if (v.tag === "error") {
 
 Operations on a `Result` are free functions, `unwrap(r)`, not `r.unwrap()`, and the value is a plain union, so `console.log`, `JSON.stringify`, and `switch` work on it directly. Because a guard narrows the union and hands you the error branch to forward as-is, **early return is the default control-flow style**, the same as any other variant.
 
-The rest of this README leans on a second `Result`-returning step alongside `chargeGateway`: `authorizeMethod`, which checks with the card network that a method is chargeable before it's actually charged:
+The rest of this README leans on a second `Result`-returning function alongside `chargeGateway`: `authorizeMethod`, which checks with the card network that a method is chargeable before it's actually charged:
 
 ```typescript
 type AuthorizeErr = Sum<{
@@ -497,18 +497,22 @@ fromNullable(raw.savedMethod, "no method"); // Result<PaymentMethod, "no method"
 
 ---
 
-## Composing steps
+## Composing fallible functions
 
-Early return, the default style above, is clear for a function of two or three steps. The functions in this section are built differently: each is a chain of smaller functions, composed once and given a name. A function that can fail has an error type of its own, and it wraps the errors of the functions it calls under tags of that type, so a failure reads as the path to where it happened.
+Early return, the default style above, is clear for a function that calls two or three others. The functions in this section are built differently: each is a chain of smaller functions, composed once and given a name. A function that can fail has an error type of its own, and it wraps the errors of the functions it calls under tags of that type, so a failure reads as the path to where it happened.
 
-The helpers that compose functions come in pairs. The plain form composes plain functions. The form prefixed with `try` composes *steps*, functions that return a `Result`, and handles the `Result` between them:
+A function that can fail returns a `Result`. Its type is `Fallible<A, B, E>`, which is `(input: A) => Result<B, E>`: it takes an `A`, and either succeeds with a `B` or fails with an `E`.
 
-| Plain | Steps |
+The helpers that compose functions come in pairs. The plain form composes plain functions. The form prefixed with `try` composes fallible ones, and handles the `Result` between them:
+
+| Plain | Fallible |
 |---|---|
 | `flow` | `tryFlow` |
 | `match` | `tryMatch` |
 | `over` | `tryOver` |
+| the array's `map` | `tryMap` |
 | the array's `flatMap` | `tryFlatMap` |
+| the array's `reduce` | `tryReduce` |
 
 ### A function that can't fail
 
@@ -520,7 +524,7 @@ function processorFee(method: PaymentMethod): number {
 }
 ```
 
-`step` brings it into a `try` composition: `step(processorFee)` is a `Fallible<PaymentMethod, number, never>`. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so its `.ok` reads without a check.
+`step` brings it into a `try` composition: `step(processorFee)` is a `Fallible<PaymentMethod, number, never>`, a fallible function with no way to fail. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so its `.ok` reads without a check.
 
 ### An error per function
 
@@ -539,11 +543,11 @@ function checkout(order: Order): Result<Receipt, CheckoutErr> {
 }
 ```
 
-A failure says where it happened: `error.authorize.declined.reason`. `mapError(result, f)` is the general form, transforming the error with any function. Wrapping a result that can't fail adds no case.
+A failure says where it happened: `error.authorize.declined.reason`. `mapError(result, f)` is the general form, transforming the error with any function. Wrapping a result that can't fail adds no case. `step(f, tag)`, below, does the same wrapping for a function in a chain.
 
 ### tryFlow and flow
 
-`tryFlow(step1, step2, ...)` composes steps into one step that stops at the first error. It builds the chain, it doesn't run it: assign it to a constant with a declared type, and each step takes its types from that declaration.
+`tryFlow(f1, f2, ...)` composes fallible functions into one that stops at the first error. It builds the chain, it doesn't run it: assign it to a constant with a declared type, and each function takes its types from that declaration.
 
 ```typescript
 import { tryFlow, step, rejectIf, rejectWith, fromNullable, type Result, type Sum, type Unit } from "ts-sumtype";
@@ -561,14 +565,16 @@ cardNumber("4111 1111 1111 1111"); // { tag: "ok", ok: "4111111111111111" }
 cardNumber("4111-1111");           // { tag: "error", error: { tag: "notADigit", notADigit: "-" } }
 ```
 
-Without the declaration, nothing tells the first step what `raw` is, and the compiler says so: `'raw' is of type 'unknown'`. `Fallible<A, B, E>`, which is `(input: A) => Result<B, E>`, is a shorter way to write that declaration.
+Without the declaration, nothing tells the first function what `raw` is, and the compiler says so: `'raw' is of type 'unknown'`. `Fallible<string, string, CardNumberErr>` is a shorter way to write that declaration.
 
-Each step takes its function first and its tag last:
+A function joins a chain through `step`, and every helper takes its function first and its tag last:
 
-- `step(f)` turns a plain function into a step that can't fail.
+- `step(f)` brings in a function that can't fail.
+- `step(f, tag)` brings in a fallible function, wrapping its error under `tag`. It's `wrapError` for a function.
 - `rejectIf(fails, tag)` fails under `tag` when `fails` holds, and passes its input on otherwise.
 - `rejectWith(problem, tag)` does the same with a query that returns an `Option` of what's wrong, and fails carrying it. The query is an ordinary function that makes sense on its own.
-- `step(f, tag)` runs a fallible function and wraps its error under `tag`. It's `wrapError` for a function.
+
+A fallible function brought in without its tag passes its whole `Result` on as the value, so the next function that uses that value is where the compiler reports it.
 
 `checkout`, from above, written as a chain:
 
@@ -604,7 +610,7 @@ const methodName: (method: PaymentMethod) => string = match({
 });
 ```
 
-`tryMatch` takes steps as handlers. It wraps each handler's error under that handler's tag, and a handler that can't fail adds no error case:
+`tryMatch` takes fallible functions as handlers. It wraps each handler's error under that handler's tag, and a handler that can't fail adds no error case:
 
 ```typescript
 import { tryMatch, type Result, type Sum } from "ts-sumtype";
@@ -638,7 +644,7 @@ forms.map(over("holder", (holder) => holder.toUpperCase()));
 
 A deeper part is reached by nesting, one key per call, which keeps autocomplete on every key and reports a misspelled key where it is written. The part may change type, and the whole's type follows it: `over("card", over("number", Number))` produces a form whose card number is a `number`.
 
-`tryOver(key, step)` is the form for a step:
+`tryOver(key, f)` is the form for a fallible function:
 
 ```typescript
 const parseForm: Fallible<CardForm, CardForm, CardNumberErr> = tryOver("card", tryOver("number", cardNumber));
@@ -649,7 +655,13 @@ parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30
 
 ### Errors that say where
 
-`At<L, E>` is an error together with where it happened: `{ at, error }`. `tryFlatMap(f, tag, at?)` runs a fallible function on every item of a list and concatenates what each returns. The first item that fails stops it, and its error comes back under `tag`, located at the item's index, or at `at(item)` when given. `prepend(items)` puts items ahead of a list, and joins a `try` composition through `step`.
+`At<L, E>` is an error together with where it happened: `{ at, error }`. The list functions run a fallible function over every item of a list:
+
+- `tryMap(f, tag, at?)` collects what each item returns.
+- `tryFlatMap(f, tag, at?)` concatenates what each returns.
+- `tryReduce(f, initial, tag, at?)` folds the items into one value, starting from `initial`.
+
+The first item that fails stops them, and its error comes back under `tag`, located at the item's index, or at `at(item)` when given. Its type is `Located<L, E>`, which is `At<L, E>`, or `never` when `f` can't fail. `prepend(items)` puts items ahead of a list, and joins a `try` composition through `step`.
 
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
@@ -688,18 +700,20 @@ An order whose `shipping` field is an object with no fields fails with an error 
 
 None of these functions is told where it is. Each builds its result from its children's results, and the location is added on the way back up, one level per `tryFlatMap`.
 
-A chain reads its functions when it's built, so the constants are declared children first. `fieldColumns` refers back to `columns`, declared after it, through `lazy(() => columns)`, which looks `columns` up each time the step runs. Without `lazy`, the compiler rejects the reference: `Block-scoped variable 'columns' used before its declaration`.
+A chain reads its functions when it's built, so the constants are declared children first. `fieldColumns` refers back to `columns`, declared after it, through `lazy(() => columns)`, which looks `columns` up each time it's called. Without `lazy`, the compiler rejects the reference: `Block-scoped variable 'columns' used before its declaration`.
 
-### Steps at a glance
+### At a glance
 
-| Step | Takes → gives | Its error |
+| Helper | Takes → gives | Its error |
 |---|---|---|
-| `tryFlow(s1, …, s6)` | `s1`'s input → the last step's output | every step's error |
+| `tryFlow(f1, …, f6)` | `f1`'s input → the last function's output | every function's error |
 | `step(f)` | `f`'s input → `f`'s output | none |
 | `step(f, tag)` | as `f` | `f`'s, under `tag` |
 | `rejectIf(fails, tag)` | its input, unchanged | `tag`, with no payload |
 | `rejectWith(problem, tag)` | its input, unchanged | `tag`, carrying the problem found |
-| `tryFlatMap(f, tag, at?)` | items → every item's output, concatenated | `tag`, carrying `{ at, error }`, at the index or `at(item)` |
+| `tryMap(f, tag, at?)` | items → every item's output | `tag`, carrying `{ at, error }`, at the index or `at(item)` |
+| `tryFlatMap(f, tag, at?)` | items → every item's output, concatenated | the same |
+| `tryReduce(f, initial, tag, at?)` | items → the folded value | the same |
 | `tryMatch(handlers)` | a sum → any handler's output | each handler's, under its tag |
 | `tryOver(key, f)` | a value → the value with that part replaced | `f`'s |
 
