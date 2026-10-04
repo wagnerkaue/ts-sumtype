@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   ok, err, errVariant, some, none, entries, variant,
   flow, tryFlow, map, lazy, prepend, attempt, rejectWith, rejectIf, tryFlatMap, match, tryMatch,
-  type Step, type Sum,
+  type Fallible, type Sum,
 } from "../src/index";
 
 describe("flow", () => {
@@ -103,7 +103,7 @@ describe("entries", () => {
 
 type Nest = Sum<{ leaf: number; wrap: Nest }>;
 
-const depth: Step<Nest, number, never> = tryMatch({
+const depth: Fallible<Nest, number, never> = tryMatch({
   leaf: map(() => 0),
   wrap: tryFlow(lazy(() => depth), map((d) => d + 1)),
 });

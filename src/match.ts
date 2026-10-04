@@ -1,6 +1,6 @@
 import { type PayloadOf } from "./variant";
 import { wrapError, type Result, type Wrapped } from "./result";
-import { type Step } from "./flow";
+import { type Fallible } from "./flow";
 
 /**
  * For each tag of `V`, a handler taking that case's payload and returning an `R`. No handlers
@@ -44,6 +44,6 @@ export function match<V extends { tag: string }, const H extends HandlersFor<V, 
  */
 export function tryMatch<V extends { tag: string }, const H extends HandlersFor<V, Result<unknown, unknown>>>(
   handlers: H & NoInfer<NoOtherTags<V, H>>,
-): Step<V, Settled<H, OkOf<ReturnOf<H>>>, Settled<H, WrappedErrorOf<H>>> {
+): Fallible<V, Settled<H, OkOf<ReturnOf<H>>>, Settled<H, WrappedErrorOf<H>>> {
   return (value) => wrapError(dispatch(handlers, value) as Result<unknown, unknown>, value.tag) as never;
 }

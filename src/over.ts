@@ -1,5 +1,5 @@
 import { ok, isOk } from "./result";
-import { type Step } from "./flow";
+import { type Fallible } from "./flow";
 
 /** `S` with the part at `K` replaced by a `B`: one key of an object, or one index of a tuple. */
 export type Replace<S, K extends keyof S, B> = {
@@ -21,7 +21,7 @@ export function over<S, const K extends keyof S, B>(key: K, f: (part: S[K]) => B
 }
 
 /** `over` for a step: a success is rebuilt into the whole, and an error passes through. */
-export function tryOver<S, const K extends keyof S, B, E>(key: K, step: Step<S[K], B, E>): Step<S, Replace<S, K, B>, E> {
+export function tryOver<S, const K extends keyof S, B, E>(key: K, step: Fallible<S[K], B, E>): Fallible<S, Replace<S, K, B>, E> {
   return (whole) => {
     const result = step(whole[key]);
     return isOk(result) ? ok(replace(whole, key, result.ok)) : result;

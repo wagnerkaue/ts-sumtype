@@ -520,7 +520,7 @@ function processorFee(method: PaymentMethod): number {
 }
 ```
 
-`map` turns it into a step, for a chain of steps: `map(processorFee)` is a `Step<PaymentMethod, number, never>`. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so its `.ok` reads without a check.
+`map` turns it into a step, for a chain of steps: `map(processorFee)` is a `Fallible<PaymentMethod, number, never>`. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so its `.ok` reads without a check.
 
 ### An error per function
 
@@ -561,7 +561,7 @@ cardNumber("4111 1111 1111 1111"); // { tag: "ok", ok: "4111111111111111" }
 cardNumber("4111-1111");           // { tag: "error", error: { tag: "notADigit", notADigit: "-" } }
 ```
 
-Without the declaration, nothing tells the first step what `raw` is, and the compiler says so: `'raw' is of type 'unknown'`. `Step<A, B, E>`, which is `(input: A) => Result<B, E>`, is a shorter way to write that declaration.
+Without the declaration, nothing tells the first step what `raw` is, and the compiler says so: `'raw' is of type 'unknown'`. `Fallible<A, B, E>`, which is `(input: A) => Result<B, E>`, is a shorter way to write that declaration.
 
 Each step takes its function first and its tag last:
 
@@ -629,7 +629,7 @@ Both take their types from the declared constant: each handler's payload, and th
 `over(key, f)` updates one part of a value, an object's key or a tuple's index, and rebuilds the whole around the result without changing the original. It fits `.map`:
 
 ```typescript
-import { over, tryOver, type Step } from "ts-sumtype";
+import { over, tryOver, type Fallible } from "ts-sumtype";
 
 type CardForm = { holder: string; card: { number: string; expiry: string } };
 
@@ -641,7 +641,7 @@ A deeper part is reached by nesting, one key per call, which keeps autocomplete 
 `tryOver(key, step)` is the form for a step:
 
 ```typescript
-const parseForm: Step<CardForm, CardForm, CardNumberErr> = tryOver("card", tryOver("number", cardNumber));
+const parseForm: Fallible<CardForm, CardForm, CardNumberErr> = tryOver("card", tryOver("number", cardNumber));
 
 parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30" } });
 // { tag: "ok", ok: { holder: "Ada", card: { number: "4111111111111111", expiry: "12/30" } } }
@@ -654,7 +654,7 @@ parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
 ```typescript
-import { tryFlow, map, lazy, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Entry, type Step, type Sum, type Unit } from "ts-sumtype";
+import { tryFlow, map, lazy, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Entry, type Fallible, type Sum, type Unit } from "ts-sumtype";
 
 type Shape = Sum<{ scalar: Unit; object: readonly Entry<Shape>[] }>;
 type Column = readonly string[];
@@ -662,17 +662,17 @@ type Column = readonly string[];
 type ColumnsErr = Sum<{ object: ObjectErr }>;
 type ObjectErr = Sum<{ noFields: Unit; field: At<string, ColumnsErr> }>;
 
-const fieldColumns: Step<Entry<Shape>, readonly Column[], ColumnsErr> = tryFlow(
+const fieldColumns: Fallible<Entry<Shape>, readonly Column[], ColumnsErr> = tryFlow(
   tryOver("payload", lazy(() => columns)),
   map(({ key, payload }) => payload.map((path) => [key, ...path])),
 );
 
-const objectColumns: Step<readonly Entry<Shape>[], readonly Column[], ObjectErr> = tryFlow(
+const objectColumns: Fallible<readonly Entry<Shape>[], readonly Column[], ObjectErr> = tryFlow(
   rejectIf((fields) => fields.length === 0, "noFields"),
   tryFlatMap(fieldColumns, "field"),
 );
 
-const columns: Step<Shape, readonly Column[], ColumnsErr> = tryMatch({
+const columns: Fallible<Shape, readonly Column[], ColumnsErr> = tryMatch({
   scalar: map(() => [[]]),
   object: objectColumns,
 });

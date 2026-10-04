@@ -520,7 +520,7 @@
         "codes": [
           "TS2322"
         ],
-        "chars": 356,
+        "chars": 364,
         "lines": 3,
         "depth": 2,
         "leaks": [],
@@ -611,7 +611,7 @@
           "TS2322",
           "TS2339"
         ],
-        "chars": 478,
+        "chars": 486,
         "lines": 7,
         "depth": 2,
         "leaks": [],
@@ -1074,7 +1074,7 @@
           "TS2322",
           "TS2345"
         ],
-        "chars": 520,
+        "chars": 528,
         "lines": 5,
         "depth": 3,
         "leaks": [],
@@ -1103,7 +1103,7 @@
         "codes": [
           "TS2345"
         ],
-        "chars": 168,
+        "chars": 176,
         "lines": 2,
         "depth": 1,
         "leaks": [],

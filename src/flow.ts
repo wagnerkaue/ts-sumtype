@@ -3,8 +3,8 @@ import { ok, err, isErr, wrapError, type Result, type At, type Wrapped } from ".
 import { some, none, isSome, type Option } from "./option";
 import { type Entry } from "./entry";
 
-/** One link of a chain: takes the previous link's value and succeeds with the next, or fails. */
-export type Step<A, B, E> = (input: A) => Result<B, E>;
+/** A function that may fail, and how: it returns a `Result` carrying either its value or its error. */
+export type Fallible<A, B, E> = (input: A) => Result<B, E>;
 
 /** Composes functions left to right, each receiving the previous one's return value as it is. */
 export function flow<A, B>(f1: (a: A) => B): (a: A) => B;
@@ -43,35 +43,35 @@ export function flow(...fs: readonly ((input: unknown) => unknown)[]): (input: u
  * Composes steps left to right into one step that stops at the first error. Assigned to a constant
  * with a declared type, each step takes its types from that declaration.
  */
-export function tryFlow<A, B, E1>(s1: Step<A, B, E1>): Step<A, B, E1>;
-export function tryFlow<A, B, C, E1, E2>(s1: Step<A, B, E1>, s2: Step<B, C, E2>): Step<A, C, E1 | E2>;
+export function tryFlow<A, B, E1>(s1: Fallible<A, B, E1>): Fallible<A, B, E1>;
+export function tryFlow<A, B, C, E1, E2>(s1: Fallible<A, B, E1>, s2: Fallible<B, C, E2>): Fallible<A, C, E1 | E2>;
 export function tryFlow<A, B, C, D, E1, E2, E3>(
-  s1: Step<A, B, E1>,
-  s2: Step<B, C, E2>,
-  s3: Step<C, D, E3>,
-): Step<A, D, E1 | E2 | E3>;
+  s1: Fallible<A, B, E1>,
+  s2: Fallible<B, C, E2>,
+  s3: Fallible<C, D, E3>,
+): Fallible<A, D, E1 | E2 | E3>;
 export function tryFlow<A, B, C, D, F, E1, E2, E3, E4>(
-  s1: Step<A, B, E1>,
-  s2: Step<B, C, E2>,
-  s3: Step<C, D, E3>,
-  s4: Step<D, F, E4>,
-): Step<A, F, E1 | E2 | E3 | E4>;
+  s1: Fallible<A, B, E1>,
+  s2: Fallible<B, C, E2>,
+  s3: Fallible<C, D, E3>,
+  s4: Fallible<D, F, E4>,
+): Fallible<A, F, E1 | E2 | E3 | E4>;
 export function tryFlow<A, B, C, D, F, G, E1, E2, E3, E4, E5>(
-  s1: Step<A, B, E1>,
-  s2: Step<B, C, E2>,
-  s3: Step<C, D, E3>,
-  s4: Step<D, F, E4>,
-  s5: Step<F, G, E5>,
-): Step<A, G, E1 | E2 | E3 | E4 | E5>;
+  s1: Fallible<A, B, E1>,
+  s2: Fallible<B, C, E2>,
+  s3: Fallible<C, D, E3>,
+  s4: Fallible<D, F, E4>,
+  s5: Fallible<F, G, E5>,
+): Fallible<A, G, E1 | E2 | E3 | E4 | E5>;
 export function tryFlow<A, B, C, D, F, G, H, E1, E2, E3, E4, E5, E6>(
-  s1: Step<A, B, E1>,
-  s2: Step<B, C, E2>,
-  s3: Step<C, D, E3>,
-  s4: Step<D, F, E4>,
-  s5: Step<F, G, E5>,
-  s6: Step<G, H, E6>,
-): Step<A, H, E1 | E2 | E3 | E4 | E5 | E6>;
-export function tryFlow(...steps: readonly Step<unknown, unknown, unknown>[]): Step<unknown, unknown, unknown> {
+  s1: Fallible<A, B, E1>,
+  s2: Fallible<B, C, E2>,
+  s3: Fallible<C, D, E3>,
+  s4: Fallible<D, F, E4>,
+  s5: Fallible<F, G, E5>,
+  s6: Fallible<G, H, E6>,
+): Fallible<A, H, E1 | E2 | E3 | E4 | E5 | E6>;
+export function tryFlow(...steps: readonly Fallible<unknown, unknown, unknown>[]): Fallible<unknown, unknown, unknown> {
   return (input) => {
     // A loop, not `reduce`, which adds two stack frames per chain to deep recursion.
     let result: Result<unknown, unknown> = ok(input);
@@ -84,7 +84,7 @@ export function tryFlow(...steps: readonly Step<unknown, unknown, unknown>[]): S
 }
 
 /** A plain function as a step that can't fail. */
-export function map<A, B>(f: (input: A) => B): Step<A, B, never> {
+export function map<A, B>(f: (input: A) => B): Fallible<A, B, never> {
   return (input) => ok(f(input));
 }
 
@@ -99,7 +99,7 @@ export function prepend<T>(first: readonly T[]): (rest: readonly T[]) => readonl
 }
 
 /** Runs `step`, wrapping its error under `tag`. A step that can't fail stays one. */
-export function attempt<A, B, E, const K extends string>(step: Step<A, B, E>, tag: K): Step<A, B, Wrapped<K, E>> {
+export function attempt<A, B, E, const K extends string>(step: Fallible<A, B, E>, tag: K): Fallible<A, B, Wrapped<K, E>> {
   return (input) => wrapError(step(input), tag);
 }
 
@@ -110,7 +110,7 @@ export function attempt<A, B, E, const K extends string>(step: Step<A, B, E>, ta
 export function rejectWith<A, P, const K extends string>(
   problem: (input: A) => Option<P>,
   tag: K,
-): Step<A, A, Sum<Record<K, P>>> {
+): Fallible<A, A, Sum<Record<K, P>>> {
   return (input) => {
     const found = problem(input);
     return isSome(found) ? err(variant(tag, found.some)) : ok(input);
@@ -121,7 +121,7 @@ export function rejectWith<A, P, const K extends string>(
 export function rejectIf<A, const K extends string>(
   fails: (input: A) => boolean,
   tag: K,
-): Step<A, A, Sum<Record<K, Unit>>> {
+): Fallible<A, A, Sum<Record<K, Unit>>> {
   return rejectWith((input: A) => (fails(input) ? some(unit) : none()), tag);
 }
 
@@ -133,9 +133,9 @@ type AtKey<E> = [E] extends [never] ? never : At<string, E>;
  * fails, with its error located by the entry's key under `tag`.
  */
 export function tryFlatMap<N extends Entry<unknown>, U, E, const K extends string>(
-  step: Step<N, readonly U[], E>,
+  step: Fallible<N, readonly U[], E>,
   tag: K,
-): Step<readonly N[], readonly U[], Wrapped<K, AtKey<E>>> {
+): Fallible<readonly N[], readonly U[], Wrapped<K, AtKey<E>>> {
   return (items) => {
     const collected: U[] = [];
     for (const item of items) {

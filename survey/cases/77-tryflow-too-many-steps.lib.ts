@@ -5,8 +5,8 @@
 // @intent  Chain seven transformations.
 // @note    tryFlow is typed for one to six steps.
 
-import { tryFlow, map, type Step } from "ts-sumtype";
+import { tryFlow, map, type Fallible } from "ts-sumtype";
 
 const inc = map((n: number) => n + 1);
 
-export const out: Step<number, number, never> = tryFlow(inc, inc, inc, inc, inc, inc, inc);
+export const out: Fallible<number, number, never> = tryFlow(inc, inc, inc, inc, inc, inc, inc);

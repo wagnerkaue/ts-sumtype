@@ -2,7 +2,7 @@ import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   mapError, wrapError,
-  flow, tryFlow, map, lazy, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Step,
+  flow, tryFlow, map, lazy, prepend, attempt, rejectWith, rejectIf, tryFlatMap, type Fallible,
   entries, type Entry,
   tryOver, over, match, tryMatch,
   type Ok, type Err, type Result, type At, type Wrapped,
@@ -196,12 +196,12 @@ const joinedAsFanned: Fanned = variant("b", "x") as Joined;
 // ── T12: tryFlow: the two Result steps from T9, composed instead of early-returned
 declare function chargeGateway(id: number, cents: number): Result<{ receiptId: string }, ParseErr>;
 const p1 = tryFlow(parseId, findUser);
-const p1Probe: Step<string, { name: string }, ParseErr | NotFoundErr> = p1;
+const p1Probe: Fallible<string, { name: string }, ParseErr | NotFoundErr> = p1;
 
-const p2: Step<string, { receiptId: string }, ParseErr> = tryFlow(parseId, (id) => chargeGateway(id, 500));
+const p2: Fallible<string, { receiptId: string }, ParseErr> = tryFlow(parseId, (id) => chargeGateway(id, 500));
 
 // a plain function joins through map, mixed with a Result step
-const p3: Step<number, number, "negative"> = tryFlow(
+const p3: Fallible<number, number, "negative"> = tryFlow(
   map((n) => n + 1),
   (n) => (n > 0 ? ok(n) : err("negative")),
 );
@@ -306,7 +306,6 @@ const flowValue: string = tryFlow(map((r: { id: string }) => r.id))({ id: "x" })
 
 // the collapse must not leak into a generic `E`: a function still building a `Result<T, E>`
 // for an unresolved `E` accepts `err(...)` with no assertion at the construction site.
-type Fallible<A, B, E> = (a: A) => Result<B, E>;
 type Pair<X, EX, Y, EY> = { forward: Fallible<X, Y, EX>; backward: Fallible<Y, X, EY> };
 type Leg<A, EA, B, EB, E> = {
   pair: Pair<A, EA, B, EB>;
@@ -395,7 +394,7 @@ const t18Listed: (items: readonly string[]) => Result<string, T18ListErr> = tryF
 
 // the chain's error is every step's error; a total step wrapped by `attempt` adds no case
 type T18Err = Sum<{ parse: ParseErr; tooBig: Unit }>;
-const t18Parsed: Step<string, number, T18Err> = tryFlow(
+const t18Parsed: Fallible<string, number, T18Err> = tryFlow(
   attempt(parseId, "parse"),
   rejectIf((n) => n > 100, "tooBig"),
   attempt(map((n) => n * 2), "double"),
@@ -406,26 +405,26 @@ const t18Total = tryFlow(map((n: number) => n + 1), map((n) => `${n}`));
 const t18TotalValue: string = t18Total(1).ok;
 
 // an inline step returning only `ok(...)` adds no error case
-const t18OkOnly: Step<number, number, never> = tryFlow((n: number) => ok(n + 1));
+const t18OkOnly: Fallible<number, number, never> = tryFlow((n: number) => ok(n + 1));
 
 // a step taking the wrong input is reported on the step before it: the annotated parameter fixes
 // the type between them, and the earlier step is the one that fails to produce it
-const t18Mismatch: Step<string, number, ParseErr> = tryFlow(
+const t18Mismatch: Fallible<string, number, ParseErr> = tryFlow(
   // @ts-expect-error parseId produces a number, but the next step takes a string
   parseId,
   map((id: string) => id.length),
 );
 
-const t18Dotted: Step<readonly string[], readonly string[], Sum<{ dotInSegment: string }>> = rejectWith(
+const t18Dotted: Fallible<readonly string[], readonly string[], Sum<{ dotInSegment: string }>> = rejectWith(
   (path) => fromNullable(path.find((segment) => segment.includes("."))),
   "dotInSegment",
 );
 const t18Prepended: (rest: readonly number[]) => readonly number[] = prepend([0]);
-const t18PrependStep: Step<readonly number[], readonly number[], never> = map(prepend([0]));
+const t18PrependStep: Fallible<readonly number[], readonly number[], never> = map(prepend([0]));
 
 // tryFlatMap locates a failure by the entry's key, and a total step locates nothing
 type T18ItemErr = Sum<{ item: At<string, "two"> }>;
-const t18Items: Step<readonly Entry<number>[], readonly number[], T18ItemErr> = tryFlatMap(
+const t18Items: Fallible<readonly Entry<number>[], readonly number[], T18ItemErr> = tryFlatMap(
   ({ payload }) => (payload === 2 ? err("two") : ok([payload])),
   "item",
 );
@@ -438,35 +437,35 @@ const t18Entry: { readonly key: "a"; readonly payload: 1 } | { readonly key: "b"
   t18Entries[0];
 
 // and tryFlow composes steps whose types are still generic
-function t18Compose<A, B, C, E>(f: Step<A, B, E>, g: Step<B, C, E>): Step<A, C, E> {
+function t18Compose<A, B, C, E>(f: Fallible<A, B, E>, g: Fallible<B, C, E>): Fallible<A, C, E> {
   return tryFlow(f, g);
 }
 
 // ── T19: tryOver and over: one part of a structure updated, the whole rebuilt around it
 type T19Order = { code: string; payment: { card: { number: string } } };
 type T19Parsed = { code: string; payment: { card: { number: number } } };
-const t19Parse: Step<T19Order, T19Parsed, never> = tryOver("payment", tryOver("card", tryOver("number", map(Number))));
+const t19Parse: Fallible<T19Order, T19Parsed, never> = tryOver("payment", tryOver("card", tryOver("number", map(Number))));
 
 // the step's error passes through as the zoomed step's own
-const t19Fallible: Step<T19Order, T19Order, ParseErr> = tryOver("code", (code: string) =>
+const t19Fallible: Fallible<T19Order, T19Order, ParseErr> = tryOver("code", (code: string) =>
   code === "" ? errVariant("parse", { input: code }) : ok(code),
 );
 
 // a tuple keeps its other positions
 type T19Pair = readonly [string, number];
-const t19Bumped: Step<T19Pair, readonly [string, string], never> = tryOver(1, map((n) => `${n + 1}`));
+const t19Bumped: Fallible<T19Pair, readonly [string, string], never> = tryOver(1, map((n) => `${n + 1}`));
 const t19Over: (pair: T19Pair) => readonly [string, boolean] = over(1, (n) => n > 0);
 
 // a wrong key is reported where it is written
 // @ts-expect-error `crad` is not a key of the payment
-const t19Typo: Step<T19Order, T19Parsed, never> = tryOver("payment", tryOver("crad", tryOver("number", map(Number))));
+const t19Typo: Fallible<T19Order, T19Parsed, never> = tryOver("payment", tryOver("crad", tryOver("number", map(Number))));
 
 // ── T20: tryMatch: a step over a sum, typed from the declared constant
 type T20Shape = Sum<{ circle: number; square: number; rect: [number, number]; empty: Unit }>;
 type T20Err = Sum<{ rect: "degenerate" }>;
 
 // inline handlers get their payload types; a handler that can't fail adds no error case
-const t20Area: Step<T20Shape, number, T20Err> = tryMatch({
+const t20Area: Fallible<T20Shape, number, T20Err> = tryMatch({
   circle: (r) => ok(Math.PI * r * r),
   square: (side) => ok(side * side),
   rect: ([w, h]) => (w === 0 || h === 0 ? err("degenerate") : ok(w * h)),
@@ -474,7 +473,7 @@ const t20Area: Step<T20Shape, number, T20Err> = tryMatch({
 });
 
 // a match whose handlers can't fail can't fail either
-const t20Total: Step<T20Shape, string, never> = tryMatch({
+const t20Total: Fallible<T20Shape, string, never> = tryMatch({
   circle: () => ok("circle"),
   square: () => ok("square"),
   rect: () => ok("rect"),
@@ -484,13 +483,13 @@ declare const t20Shape: T20Shape;
 const t20TotalValue: string = t20Total(t20Shape).ok;
 
 // @ts-expect-error every tag needs a handler
-const t20Missing: Step<T20Shape, number, never> = tryMatch({
+const t20Missing: Fallible<T20Shape, number, never> = tryMatch({
   circle: (r) => ok(r),
   square: (side) => ok(side),
   rect: ([w]) => ok(w),
 });
 
-const t20Extra: Step<T20Shape, number, never> = tryMatch({
+const t20Extra: Fallible<T20Shape, number, never> = tryMatch({
   circle: (r) => ok(r),
   square: (side) => ok(side),
   rect: ([w]) => ok(w),
@@ -500,7 +499,7 @@ const t20Extra: Step<T20Shape, number, never> = tryMatch({
 });
 
 // a rejected handler is the only error: the declaration is not reported a second time
-const t20WrongPayload: Step<T20Shape, number, never> = tryMatch({
+const t20WrongPayload: Fallible<T20Shape, number, never> = tryMatch({
   // @ts-expect-error the circle's payload is a number
   circle: (r: string) => ok(r.length),
   square: (side) => ok(side),
@@ -509,15 +508,15 @@ const t20WrongPayload: Step<T20Shape, number, never> = tryMatch({
 });
 
 // handlers that really succeed with `unknown` keep it, rather than reading as a rejected match
-declare const t20Unknown: Step<number, unknown, unknown>;
+declare const t20Unknown: Fallible<number, unknown, unknown>;
 // @ts-expect-error the output is unknown, not number
-const t20UnknownOut: Step<Sum<{ a: number; b: number }>, number, Sum<{ a: unknown; b: unknown }>> = tryMatch({
+const t20UnknownOut: Fallible<Sum<{ a: number; b: number }>, number, Sum<{ a: unknown; b: unknown }>> = tryMatch({
   a: (n: number): Result<unknown, unknown> => t20Unknown(n),
   b: (n: number): Result<unknown, unknown> => t20Unknown(n),
 });
 
 // nested in a declared chain, it takes its input from the step before
-const t20Chained: Step<string, number, T20Err> = tryFlow(
+const t20Chained: Fallible<string, number, T20Err> = tryFlow(
   map((raw: string): T20Shape => variant("circle", Number(raw))),
   tryMatch({
     circle: (r) => ok(Math.PI * r * r),
@@ -593,15 +592,15 @@ type T23Column = readonly string[];
 type T23Err = Sum<{ object: T23ObjectErr }>;
 type T23ObjectErr = Sum<{ noFields: Unit; field: At<string, T23Err> }>;
 
-const t23FieldColumns: Step<Entry<T23Shape>, readonly T23Column[], T23Err> = tryFlow(
+const t23FieldColumns: Fallible<Entry<T23Shape>, readonly T23Column[], T23Err> = tryFlow(
   tryOver("payload", lazy(() => t23Columns)),
   map(({ key, payload }) => payload.map((path) => [key, ...path])),
 );
-const t23ObjectColumns: Step<readonly Entry<T23Shape>[], readonly T23Column[], T23ObjectErr> = tryFlow(
+const t23ObjectColumns: Fallible<readonly Entry<T23Shape>[], readonly T23Column[], T23ObjectErr> = tryFlow(
   rejectIf((fields) => fields.length === 0, "noFields"),
   tryFlatMap(t23FieldColumns, "field"),
 );
-const t23Columns: Step<T23Shape, readonly T23Column[], T23Err> = tryMatch({
+const t23Columns: Fallible<T23Shape, readonly T23Column[], T23Err> = tryMatch({
   scalar: map(() => [[]]),
   object: t23ObjectColumns,
 });
