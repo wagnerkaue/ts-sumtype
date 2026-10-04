@@ -5,9 +5,9 @@
 // @intent  Join a non-empty list; the author leaves the input untyped.
 // @note    Nothing gives the steps their input type: it comes from the declared type of the constant holding the chain.
 
-import { tryFlow, map, rejectIf } from "ts-sumtype";
+import { tryFlow, step, rejectIf } from "ts-sumtype";
 
 export const listed = tryFlow(
   rejectIf((items) => items.length === 0, "empty"),
-  map((items) => items.join(", ")),
+  step((items) => items.join(", ")),
 );

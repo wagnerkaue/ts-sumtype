@@ -39,7 +39,7 @@ export function match<V extends { tag: string }, const H extends HandlersFor<V, 
 }
 
 /**
- * `match` for handlers that are steps: the handler's error comes back wrapped under its tag, and a
+ * `match` for fallible handlers: the handler's error comes back wrapped under its tag, and a
  * handler that can't fail adds no error case.
  */
 export function tryMatch<V extends { tag: string }, const H extends HandlersFor<V, Result<unknown, unknown>>>(

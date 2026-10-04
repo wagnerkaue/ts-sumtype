@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ok, err, map, tryOver, over, type Result, type Fallible } from "../src/index";
+import { ok, err, step, tryOver, over, type Result, type Fallible } from "../src/index";
 
 type Pair = readonly [string, number];
 type Order = { code: string; payment: { card: { number: string } } };
@@ -18,7 +18,7 @@ describe("tryOver", () => {
   });
 
   it("nests, changing the type deep inside without touching the original", () => {
-    const parseNumber: Fallible<Order, ParsedOrder, never> = tryOver("payment", tryOver("card", tryOver("number", map(Number))));
+    const parseNumber: Fallible<Order, ParsedOrder, never> = tryOver("payment", tryOver("card", tryOver("number", step(Number))));
     const order: Order = { code: "A-1", payment: { card: { number: "4111" } } };
     expect(parseNumber(order)).toEqual(ok({ code: "A-1", payment: { card: { number: 4111 } } }));
     expect(order.payment.card.number).toBe("4111");

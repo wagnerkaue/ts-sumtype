@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import {
   ok, err, errVariant, some, none, entries, variant,
-  flow, tryFlow, map, lazy, prepend, attempt, rejectWith, rejectIf, tryFlatMap, match, tryMatch,
+  flow, tryFlow, step, lazy, prepend, rejectWith, rejectIf, tryFlatMap, match, tryMatch,
   type Fallible, type Sum,
 } from "../src/index";
 
@@ -19,21 +19,21 @@ describe("flow", () => {
 
 describe("tryFlow", () => {
   it("passes each step's value to the next", () => {
-    const step = tryFlow(
-      map((n: number) => n + 1),
-      map((n) => n * 10),
+    const chain = tryFlow(
+      step((n: number) => n + 1),
+      step((n) => n * 10),
     );
-    expect(step(2)).toEqual(ok(30));
-    expect(step(4)).toEqual(ok(50));
+    expect(chain(2)).toEqual(ok(30));
+    expect(chain(4)).toEqual(ok(50));
   });
 
   it("stops at the first error", () => {
     const after = vi.fn((n: number) => n);
-    const step = tryFlow(
+    const chain = tryFlow(
       rejectIf((n: number) => n === 1, "one"),
-      map(after),
+      step(after),
     );
-    expect(step(1)).toEqual(errVariant("one"));
+    expect(chain(1)).toEqual(errVariant("one"));
     expect(after).not.toHaveBeenCalled();
   });
 });
@@ -43,18 +43,22 @@ describe("prepend", () => {
     expect(prepend([1])([2, 3])).toEqual([1, 2, 3]);
   });
 
-  it("joins a chain of steps through map", () => {
-    expect(tryFlow(map(prepend([1])))([2, 3])).toEqual(ok([1, 2, 3]));
+  it("joins a try composition through step", () => {
+    expect(tryFlow(step(prepend([1])))([2, 3])).toEqual(ok([1, 2, 3]));
   });
 });
 
-describe("attempt", () => {
-  it("wraps the step's error under its tag", () => {
-    expect(attempt(() => err("bad"), "parse")("x")).toEqual(errVariant("parse", "bad"));
+describe("step", () => {
+  it("makes a function that can't fail a Fallible with no error case", () => {
+    expect(step((n: number) => n + 1)(1)).toEqual(ok(2));
+  });
+
+  it("wraps a fallible function's error under its tag", () => {
+    expect(step(() => err("bad"), "parse")("x")).toEqual(errVariant("parse", "bad"));
   });
 
   it("passes a success through", () => {
-    expect(attempt((n: number) => ok(n + 1), "parse")(1)).toEqual(ok(2));
+    expect(step((n: number) => ok(n + 1), "parse")(1)).toEqual(ok(2));
   });
 });
 
@@ -104,8 +108,8 @@ describe("entries", () => {
 type Nest = Sum<{ leaf: number; wrap: Nest }>;
 
 const depth: Fallible<Nest, number, never> = tryMatch({
-  leaf: map(() => 0),
-  wrap: tryFlow(lazy(() => depth), map((d) => d + 1)),
+  leaf: step(() => 0),
+  wrap: tryFlow(lazy(() => depth), step((d) => d + 1)),
 });
 
 const doubled: (nest: Nest) => number = match({

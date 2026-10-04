@@ -4,7 +4,7 @@
 // @title   Correct three-step chain
 // @intent  Reference point: parse, validate, format -- each step lines up with the last.
 
-import { tryFlow, map, ok, err, type Result } from "ts-sumtype";
+import { tryFlow, step, ok, err, type Result } from "ts-sumtype";
 
 const parse = (raw: string): Result<number, string> => {
   const n = Number(raw);
@@ -13,4 +13,4 @@ const parse = (raw: string): Result<number, string> => {
 const validate = (n: number): Result<number, string> => (n > 0 ? ok(n) : err("not positive"));
 const format = (n: number): string => n.toFixed(2);
 
-export const run: (raw: string) => Result<string, string> = tryFlow(parse, validate, map(format));
+export const run: (raw: string) => Result<string, string> = tryFlow(parse, validate, step(format));

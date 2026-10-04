@@ -4,8 +4,8 @@
 // @title   tryFlow called on steps whose types are unresolved generics
 // @intent  Write a reusable helper that extends whatever step it is handed.
 
-import { tryFlow, map, type Fallible } from "ts-sumtype";
+import { tryFlow, step, type Fallible } from "ts-sumtype";
 
-export function measured<T>(step: Fallible<string, T, string>): Fallible<string, number, string> {
-  return tryFlow(step, map((x) => String(x)), map((s) => s.length));
+export function measured<T>(f: Fallible<string, T, string>): Fallible<string, number, string> {
+  return tryFlow(f, step((x) => String(x)), step((s) => s.length));
 }

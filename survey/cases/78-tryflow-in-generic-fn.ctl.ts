@@ -6,9 +6,9 @@
 
 type Res<T> = { ok: true; value: T } | { ok: false; error: string };
 
-export function measured<T>(step: (raw: string) => Res<T>): (raw: string) => Res<number> {
+export function measured<T>(f: (raw: string) => Res<T>): (raw: string) => Res<number> {
   return (raw) => {
-    const r = step(raw);
+    const r = f(raw);
     if (!r.ok) return r;
     return { ok: true, value: String(r.value).length };
   };

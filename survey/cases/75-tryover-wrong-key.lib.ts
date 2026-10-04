@@ -4,12 +4,12 @@
 // @title   A key that the part being updated does not have
 // @intent  Parse the card number inside an order; the author misspells `card`.
 
-import { tryOver, map, type Fallible } from "ts-sumtype";
+import { tryOver, step, type Fallible } from "ts-sumtype";
 
 type Order = { code: string; payment: { card: { number: string } } };
 type ParsedOrder = { code: string; payment: { card: { number: number } } };
 
 export const parseNumber: Fallible<Order, ParsedOrder, never> = tryOver(
   "payment",
-  tryOver("crad", tryOver("number", map(Number))),
+  tryOver("crad", tryOver("number", step(Number))),
 );

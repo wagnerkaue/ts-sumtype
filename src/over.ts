@@ -20,10 +20,10 @@ export function over<S, const K extends keyof S, B>(key: K, f: (part: S[K]) => B
   return (whole) => replace(whole, key, f(whole[key]));
 }
 
-/** `over` for a step: a success is rebuilt into the whole, and an error passes through. */
-export function tryOver<S, const K extends keyof S, B, E>(key: K, step: Fallible<S[K], B, E>): Fallible<S, Replace<S, K, B>, E> {
+/** `over` for a fallible function: a success is rebuilt into the whole, and an error passes through. */
+export function tryOver<S, const K extends keyof S, B, E>(key: K, f: Fallible<S[K], B, E>): Fallible<S, Replace<S, K, B>, E> {
   return (whole) => {
-    const result = step(whole[key]);
+    const result = f(whole[key]);
     return isOk(result) ? ok(replace(whole, key, result.ok)) : result;
   };
 }

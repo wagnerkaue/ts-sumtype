@@ -520,7 +520,7 @@ function processorFee(method: PaymentMethod): number {
 }
 ```
 
-`map` turns it into a step, for a chain of steps: `map(processorFee)` is a `Fallible<PaymentMethod, number, never>`. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so its `.ok` reads without a check.
+`step` brings it into a `try` composition: `step(processorFee)` is a `Fallible<PaymentMethod, number, never>`. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so its `.ok` reads without a check.
 
 ### An error per function
 
@@ -546,12 +546,12 @@ A failure says where it happened: `error.authorize.declined.reason`. `mapError(r
 `tryFlow(step1, step2, ...)` composes steps into one step that stops at the first error. It builds the chain, it doesn't run it: assign it to a constant with a declared type, and each step takes its types from that declaration.
 
 ```typescript
-import { tryFlow, map, rejectIf, rejectWith, fromNullable, type Result, type Sum, type Unit } from "ts-sumtype";
+import { tryFlow, step, rejectIf, rejectWith, fromNullable, type Result, type Sum, type Unit } from "ts-sumtype";
 
 type CardNumberErr = Sum<{ empty: Unit; notADigit: string; checksum: Unit }>;
 
 const cardNumber: (raw: string) => Result<string, CardNumberErr> = tryFlow(
-  map((raw) => raw.replaceAll(" ", "")),
+  step((raw) => raw.replaceAll(" ", "")),
   rejectIf((digits) => digits === "", "empty"),
   rejectWith((digits) => fromNullable(digits.match(/\D/)?.[0]), "notADigit"),
   rejectIf((digits) => !luhn(digits), "checksum"),
@@ -565,17 +565,17 @@ Without the declaration, nothing tells the first step what `raw` is, and the com
 
 Each step takes its function first and its tag last:
 
-- `map(f)` turns a plain function into a step that can't fail.
+- `step(f)` turns a plain function into a step that can't fail.
 - `rejectIf(fails, tag)` fails under `tag` when `fails` holds, and passes its input on otherwise.
 - `rejectWith(problem, tag)` does the same with a query that returns an `Option` of what's wrong, and fails carrying it. The query is an ordinary function that makes sense on its own.
-- `attempt(step, tag)` runs a step and wraps its error under `tag`. It's `wrapError` for a step.
+- `step(f, tag)` runs a fallible function and wraps its error under `tag`. It's `wrapError` for a function.
 
 `checkout`, from above, written as a chain:
 
 ```typescript
 const checkout: (order: Order) => Result<Receipt, CheckoutErr> = tryFlow(
-  attempt(tryOver("method", authorizeMethod), "authorize"),
-  attempt(({ method, cents }) => chargeGateway(method, cents), "charge"),
+  step(tryOver("method", authorizeMethod), "authorize"),
+  step(({ method, cents }) => chargeGateway(method, cents), "charge"),
 );
 ```
 
@@ -611,14 +611,14 @@ import { tryMatch, type Result, type Sum } from "ts-sumtype";
 
 const cardFee: (card: { cardNumber: string }) => Result<number, CardNumberErr> = tryFlow(
   (card) => cardNumber(card.cardNumber),
-  map((digits) => (digits.startsWith("3") ? 0.035 : 0.024)),
+  step((digits) => (digits.startsWith("3") ? 0.035 : 0.024)),
 );
 
 const methodFee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardNumberErr }>> = tryMatch({
-  cash: map(() => 0),
-  paypal: map(() => 0.029),
+  cash: step(() => 0),
+  paypal: step(() => 0.029),
   creditCard: cardFee,
-  crypto: map(() => 0.01),
+  crypto: step(() => 0.01),
 });
 ```
 
@@ -654,7 +654,7 @@ parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
 ```typescript
-import { tryFlow, map, lazy, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Entry, type Fallible, type Sum, type Unit } from "ts-sumtype";
+import { tryFlow, step, lazy, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Entry, type Fallible, type Sum, type Unit } from "ts-sumtype";
 
 type Shape = Sum<{ scalar: Unit; object: readonly Entry<Shape>[] }>;
 type Column = readonly string[];
@@ -664,7 +664,7 @@ type ObjectErr = Sum<{ noFields: Unit; field: At<string, ColumnsErr> }>;
 
 const fieldColumns: Fallible<Entry<Shape>, readonly Column[], ColumnsErr> = tryFlow(
   tryOver("payload", lazy(() => columns)),
-  map(({ key, payload }) => payload.map((path) => [key, ...path])),
+  step(({ key, payload }) => payload.map((path) => [key, ...path])),
 );
 
 const objectColumns: Fallible<readonly Entry<Shape>[], readonly Column[], ObjectErr> = tryFlow(
@@ -673,7 +673,7 @@ const objectColumns: Fallible<readonly Entry<Shape>[], readonly Column[], Object
 );
 
 const columns: Fallible<Shape, readonly Column[], ColumnsErr> = tryMatch({
-  scalar: map(() => [[]]),
+  scalar: step(() => [[]]),
   object: objectColumns,
 });
 ```
@@ -694,13 +694,13 @@ A chain reads its functions when it's built, so the constants are declared child
 | Step | Takes → gives | Its error |
 |---|---|---|
 | `tryFlow(s1, …, s6)` | `s1`'s input → the last step's output | every step's error |
-| `map(f)` | `f`'s input → `f`'s output | none |
-| `attempt(step, tag)` | as `step` | `step`'s, under `tag` |
+| `step(f)` | `f`'s input → `f`'s output | none |
+| `step(f, tag)` | as `f` | `f`'s, under `tag` |
 | `rejectIf(fails, tag)` | its input, unchanged | `tag`, with no payload |
 | `rejectWith(problem, tag)` | its input, unchanged | `tag`, carrying the problem found |
 | `tryFlatMap(step, tag)` | entries → every entry's output, concatenated | `tag`, carrying `{ at: key, error }` |
 | `tryMatch(handlers)` | a sum → any handler's output | each handler's, under its tag |
-| `tryOver(key, step)` | a value → the value with that part replaced | `step`'s |
+| `tryOver(key, f)` | a value → the value with that part replaced | `f`'s |
 
 ---
 

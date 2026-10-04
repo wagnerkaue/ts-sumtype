@@ -40,8 +40,8 @@ export function flow(...fs: readonly ((input: unknown) => unknown)[]): (input: u
 }
 
 /**
- * Composes steps left to right into one step that stops at the first error. Assigned to a constant
- * with a declared type, each step takes its types from that declaration.
+ * Composes fallible functions left to right into one that stops at the first error. Assigned to a
+ * constant with a declared type, each function takes its types from that declaration.
  */
 export function tryFlow<A, B, E1>(s1: Fallible<A, B, E1>): Fallible<A, B, E1>;
 export function tryFlow<A, B, C, E1, E2>(s1: Fallible<A, B, E1>, s2: Fallible<B, C, E2>): Fallible<A, C, E1 | E2>;
@@ -71,21 +71,26 @@ export function tryFlow<A, B, C, D, F, G, H, E1, E2, E3, E4, E5, E6>(
   s5: Fallible<F, G, E5>,
   s6: Fallible<G, H, E6>,
 ): Fallible<A, H, E1 | E2 | E3 | E4 | E5 | E6>;
-export function tryFlow(...steps: readonly Fallible<unknown, unknown, unknown>[]): Fallible<unknown, unknown, unknown> {
+export function tryFlow(...fs: readonly Fallible<unknown, unknown, unknown>[]): Fallible<unknown, unknown, unknown> {
   return (input) => {
     // A loop, not `reduce`, which adds two stack frames per chain to deep recursion.
     let result: Result<unknown, unknown> = ok(input);
-    for (const step of steps) {
+    for (const f of fs) {
       if (isErr(result)) return result;
-      result = step(result.ok);
+      result = f(result.ok);
     }
     return result;
   };
 }
 
-/** A plain function as a step that can't fail. */
-export function map<A, B>(f: (input: A) => B): Fallible<A, B, never> {
-  return (input) => ok(f(input));
+/**
+ * Brings a function into a `try` composition. A fallible `f` takes a `tag`, and its error comes back
+ * wrapped under it. A function that can't fail takes none, and becomes a `Fallible` with no error case.
+ */
+export function step<A, B, E, const K extends string>(f: Fallible<A, B, E>, tag: K): Fallible<A, B, Wrapped<K, E>>;
+export function step<A, B>(f: (input: A) => B): Fallible<A, B, never>;
+export function step(f: (input: unknown) => unknown, tag?: string): Fallible<unknown, unknown, unknown> {
+  return (input) => (tag === undefined ? ok(f(input)) : wrapError(f(input) as Result<unknown, unknown>, tag));
 }
 
 /** Looks up `get()` each time it's called, so a chain can refer to a constant declared after it. */
@@ -96,11 +101,6 @@ export function lazy<A, B>(get: () => (input: A) => B): (input: A) => B {
 /** Puts `first` ahead of the list it is given. */
 export function prepend<T>(first: readonly T[]): (rest: readonly T[]) => readonly T[] {
   return (rest) => [...first, ...rest];
-}
-
-/** Runs `step`, wrapping its error under `tag`. A step that can't fail stays one. */
-export function attempt<A, B, E, const K extends string>(step: Fallible<A, B, E>, tag: K): Fallible<A, B, Wrapped<K, E>> {
-  return (input) => wrapError(step(input), tag);
 }
 
 /**
@@ -125,21 +125,21 @@ export function rejectIf<A, const K extends string>(
   return rejectWith((input: A) => (fails(input) ? some(unit) : none()), tag);
 }
 
-/** `At<string, E>`, or `never` when `E` is, so a step that can't fail locates nothing. */
+/** `At<string, E>`, or `never` when `E` is, so a function that can't fail locates nothing. */
 type AtKey<E> = [E] extends [never] ? never : At<string, E>;
 
 /**
- * Runs `step` on every entry and concatenates what each returns. Fails at the first entry that
+ * Runs `f` on every entry and concatenates what each returns. Fails at the first entry that
  * fails, with its error located by the entry's key under `tag`.
  */
 export function tryFlatMap<N extends Entry<unknown>, U, E, const K extends string>(
-  step: Fallible<N, readonly U[], E>,
+  f: Fallible<N, readonly U[], E>,
   tag: K,
 ): Fallible<readonly N[], readonly U[], Wrapped<K, AtKey<E>>> {
   return (items) => {
     const collected: U[] = [];
     for (const item of items) {
-      const result = step(item);
+      const result = f(item);
       // The cast is sound: an error exists here, so `E` is not `never`.
       if (isErr(result)) return err(variant(tag, { at: item.key, error: result.error })) as never;
       collected.push(...result.ok);
