@@ -1122,17 +1122,16 @@
         "overload": false
       }
     },
-    "tryover-wrong-key": {
+    "patch-wrong-key": {
       "anomaly": null,
       "lib": {
-        "count": 2,
+        "count": 1,
         "codes": [
-          "TS2322",
-          "TS2345"
+          "TS2353"
         ],
-        "chars": 528,
-        "lines": 5,
-        "depth": 3,
+        "chars": 178,
+        "lines": 1,
+        "depth": 0,
         "leaks": [],
         "sumExpansions": 0,
         "truncated": false,

@@ -1,4 +1,4 @@
-// @case    tryover-wrong-key
+// @case    patch-wrong-key
 // @feature object spread
 // @kind    mistake
 // @title   A key that the part being updated does not have

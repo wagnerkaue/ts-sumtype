@@ -4,6 +4,6 @@ export * from "./option";
 export * from "./unwrap";
 export * from "./adapt";
 export * from "./list";
-export * from "./over";
+export * from "./patch";
 export * from "./match";
 export * from "./r";

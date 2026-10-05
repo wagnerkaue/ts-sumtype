@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { ok, errVariant, some, none, someOr, variant, unwrap, fromFlat, tryOver, match, tryMatch, tryMap, tryReduce, r } = require("../dist/index.cjs");
+const { ok, errVariant, some, none, someOr, variant, unwrap, fromFlat, patch, match, tryMatch, tryMap, tryReduce, r } = require("../dist/index.cjs");
 const { tryMap: tryMapEntry } = require("../dist/list.cjs");
 const { r: rEntry } = require("../dist/r.cjs");
 
@@ -12,7 +12,7 @@ assert.deepEqual(fromFlat("type")({ type: "video", duration: 4 }), {
   video: { duration: 4 },
 });
 
-assert.deepEqual(tryOver("card", tryOver(0, (text) => ok(Number(text))))({ card: ["4111", "x"] }), { tag: "ok", ok: { card: [4111, "x"] } });
+assert.deepEqual(patch({ holder: "ada", card: { number: "4111" } }, { card: { number: Number } }), { holder: "ada", card: { number: 4111 } });
 assert.equal(match({ square: () => 4, triangle: () => 3 })(variant("triangle")), 3);
 const doubled = match({ leaf: (n) => n, wrap: (inner) => doubled(inner) * 2 });
 assert.equal(doubled(variant("wrap", variant("leaf", 3))), 6);

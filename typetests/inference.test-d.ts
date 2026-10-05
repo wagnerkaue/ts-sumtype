@@ -3,7 +3,7 @@ import {
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   wrapError, type Fallible,
   tryReduce, tryMap, tryFlatMap,
-  tryOver, over, match, tryMatch, r,
+  patch, match, tryMatch, r,
   type Ok, type Err, type Result, type At, type Wrapped, type Located,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
@@ -351,24 +351,34 @@ function t17Wrap<T, E, const K extends string>(r: Result<T, E>, tag: K): Result<
 declare const t17Located: At<string, "bad">;
 const t17LocatedError: "bad" = t17Located.error;
 
-// ── T19: tryOver and over: one part of a structure updated, the whole rebuilt around it
-type T19Order = { code: string; payment: { card: { number: string } } };
-type T19Parsed = { code: string; payment: { card: { number: number } } };
-const t19Parse: Fallible<T19Order, T19Parsed, never> = tryOver("payment", tryOver("card", tryOver("number", (number: string) => ok(Number(number)))));
+// ── T19: patch -- parts of a structure changed by functions, the whole rebuilt around them
+type T19Order = {
+  readonly code: string;
+  readonly payment: { readonly card: { readonly number: string } };
+  readonly note?: string;
+};
+declare const t19Order: T19Order;
 
-// the step's error passes through as the zoomed step's own
-const t19Fallible: Fallible<T19Order, T19Order, ParseErr> = tryOver("code", (code: string) =>
-  code === "" ? errVariant("parse", { input: code }) : ok(code),
-);
+// a part changes type, and the whole's type follows it, keeping readonly and optional parts
+const t19Parsed: { readonly payment: { readonly card: { readonly number: number } } } = patch(t19Order, {
+  payment: { card: { number: Number } },
+});
+const t19Coded = patch(t19Order, { code: (code) => code.length });
+const t19CodedFresh: typeof t19Coded = { code: 1, payment: { card: { number: "4111" } } };
+// @ts-expect-error a part stays readonly
+t19Coded.code = 2;
 
-// a tuple keeps its other positions
-type T19Pair = readonly [string, number];
-const t19Bumped: Fallible<T19Pair, readonly [string, string], never> = tryOver(1, (n) => ok(`${n + 1}`));
-const t19Over: (pair: T19Pair) => readonly [string, boolean] = over(1, (n) => n > 0);
+// on a sum, a change applies to the case that has the key
+type T19Shape = Sum<{ fields: readonly string[]; empty: Unit }>;
+declare const t19Shape: T19Shape;
+const t19Counted: Sum<{ fields: number; empty: Unit }> = patch(t19Shape, { fields: (fields) => fields.length });
 
-// a wrong key is reported where it is written
-// @ts-expect-error `crad` is not a key of the payment
-const t19Typo: Fallible<T19Order, T19Parsed, never> = tryOver("payment", tryOver("crad", tryOver("number", (number: string) => ok(Number(number)))));
+// @ts-expect-error a fixed value is written as a function returning it
+patch(t19Order, { code: "X" });
+// @ts-expect-error an array is replaced whole, by a function
+patch({ tags: ["a"] }, { tags: ["b"] });
+// @ts-expect-error a key the value doesn't have
+patch(t19Order, { cdoe: (code: string) => code });
 
 // ── T20: tryMatch: a fallible function over a sum, typed from the declared constant
 type T20Shape = Sum<{ circle: number; square: number; rect: [number, number]; empty: Unit }>;
