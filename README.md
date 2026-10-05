@@ -370,7 +370,7 @@ if (v.tag === "error") {
 }
 ```
 
-Operations on a `Result` are free functions, `unwrap(r)`, not `r.unwrap()`, and the value is a plain union, so `console.log`, `JSON.stringify`, and `switch` work on it directly. Because a guard narrows the union and hands you the error branch to forward as-is, **early return is the default control-flow style**, the same as any other variant.
+Operations on a `Result` are free functions, `unwrap(result)`, not `result.unwrap()`, and the value is a plain union, so `console.log`, `JSON.stringify`, and `switch` work on it directly. Because a guard narrows the union and hands you the error branch to forward as-is, **early return is the default control-flow style**, the same as any other variant.
 
 The rest of this README leans on a second `Result`-returning function alongside `chargeGateway`: `authorizeMethod`, which checks with the card network that a method is chargeable before it's actually charged:
 
@@ -431,11 +431,10 @@ err(caught); // { tag: "error", error: caught }: whatever caught is, stored as-i
 | `ok(value)` | `Ok<T>` |
 | `err(payload)` | `Err<E>` |
 | `errVariant("tag", payload)` | `Err<Sum<{ tag: payload }>>` |
-| `isOk(r)` / `isErr(r)` | type guards |
+| `isOk(result)` / `isErr(result)` | type guards |
 | `fromThrowable(f, mapError?)` | runs `f`, catching a throw into `Err` |
-| `toOption(r)` | `Ok → Some`, `Err → None` |
-| `mapError(r, f)` | `Err` with its error transformed by `f` |
-| `wrapError(r, "tag")` | `Err` with its error wrapped as a `tag` case; nothing added when `r` can't fail |
+| `toOption(result)` | `Ok → Some`, `Err → None` |
+| `wrapError(result, "tag")` | `Err` with its error wrapped as a `tag` case; nothing added when `result` can't fail |
 
 ---
 
@@ -499,32 +498,18 @@ fromNullable(raw.savedMethod, "no method"); // Result<PaymentMethod, "no method"
 
 ## Composing fallible functions
 
-Early return, the default style above, is clear for a function that calls two or three others. The functions in this section are built differently: each is a chain of smaller functions, composed once and given a name. A function that can fail has an error type of its own, and it wraps the errors of the functions it calls under tags of that type, so a failure reads as the path to where it happened.
-
 A function that can fail returns a `Result`. Its type is `Fallible<A, B, E>`, which is `(input: A) => Result<B, E>`: it takes an `A`, and either succeeds with a `B` or fails with an `E`.
 
-The helpers that compose functions come in pairs. The plain form composes plain functions. The form prefixed with `try` composes fallible ones, and handles the `Result` between them:
+Early return, the default style above, handles each `Result` a function gets by hand: check it, return its error, read its value. `r`, below, keeps that style and does the checking, so each call that can fail takes one line. A function that can fail has an error type of its own, and it wraps the errors of the functions it calls under tags of that type, so a failure reads as the path to where it happened.
+
+Some helpers come in pairs. The plain form takes plain functions. The form prefixed with `try` takes fallible ones, and handles the `Result` each returns:
 
 | Plain | Fallible |
 |---|---|
-| `flow` | `tryFlow` |
 | `match` | `tryMatch` |
-| `over` | `tryOver` |
 | the array's `map` | `tryMap` |
 | the array's `flatMap` | `tryFlatMap` |
 | the array's `reduce` | `tryReduce` |
-
-### A function that can't fail
-
-A function that can't fail returns its value:
-
-```typescript
-function processorFee(method: PaymentMethod): number {
-  return method.tag === "creditCard" ? 0.024 : 0;
-}
-```
-
-`step` brings it into a `try` composition: `step(processorFee)` is a `Fallible<PaymentMethod, number, never>`, a fallible function with no way to fail. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so its `.ok` reads without a check.
 
 ### An error per function
 
@@ -543,57 +528,71 @@ function checkout(order: Order): Result<Receipt, CheckoutErr> {
 }
 ```
 
-A failure says where it happened: `error.authorize.declined.reason`. `mapError(result, f)` is the general form, transforming the error with any function. Wrapping a result that can't fail adds no case. `step(f, tag)`, below, does the same wrapping for a function in a chain.
+A failure says where it happened: `error.authorize.declined.reason`. Wrapping a result that can't fail adds no case.
 
-### tryFlow and flow
+### r
 
-`tryFlow(f1, f2, ...)` composes fallible functions into one that stops at the first error. It builds the chain, it doesn't run it: assign it to a constant with a declared type, and each function takes its types from that declaration.
+`r(($) => { ... })` runs its body and returns the outcome as a `Result`. The body is ordinary code, with two ways to leave it with an error:
+
+- `$.try(result, tag)` gives the success value of `result`, or leaves the body with its error wrapped under `tag`.
+- `return $.fail(tag)` leaves the body with a case of the function's own error type, and `return $.fail(tag, payload)` with a case that carries a payload.
+
+What the body returns is the success value. `checkout`, from above:
 
 ```typescript
-import { tryFlow, step, rejectIf, rejectWith, fromNullable, type Result, type Sum, type Unit } from "ts-sumtype";
+import { r, type Result } from "ts-sumtype";
+
+const checkout = (order: Order): Result<Receipt, CheckoutErr> => r(($) => {
+  const authorized = $.try(authorizeMethod(order.method), "authorize");
+  return $.try(chargeGateway(authorized, order.cents), "charge");
+});
+```
+
+A function with errors of its own fails with them:
+
+```typescript
+import { r, type Result, type Sum, type Unit } from "ts-sumtype";
 
 type CardNumberErr = Sum<{ empty: Unit; notADigit: string; checksum: Unit }>;
 
-const cardNumber: (raw: string) => Result<string, CardNumberErr> = tryFlow(
-  step((raw) => raw.replaceAll(" ", "")),
-  rejectIf((digits) => digits === "", "empty"),
-  rejectWith((digits) => fromNullable(digits.match(/\D/)?.[0]), "notADigit"),
-  rejectIf((digits) => !luhn(digits), "checksum"),
-);
+const cardNumber = (raw: string): Result<string, CardNumberErr> => r(($) => {
+  const digits = raw.replaceAll(" ", "");
+  if (digits === "") return $.fail("empty");
+  const notADigit = digits.match(/\D/)?.[0];
+  if (notADigit !== undefined) return $.fail("notADigit", notADigit);
+  if (!luhn(digits)) return $.fail("checksum");
+  return digits;
+});
 
 cardNumber("4111 1111 1111 1111"); // { tag: "ok", ok: "4111111111111111" }
 cardNumber("4111-1111");           // { tag: "error", error: { tag: "notADigit", notADigit: "-" } }
 ```
 
-Without the declaration, nothing tells the first function what `raw` is, and the compiler says so: `'raw' is of type 'unknown'`. `Fallible<string, string, CardNumberErr>` is a shorter way to write that declaration.
+`r` takes its types from the function's declared return type. The success value is checked against it, and so is each tag and payload, where it's written: `$.fail("emtpy")` is reported at `"emtpy"`, `$.fail("notADigit")` without its payload at `"notADigit"`, and `$.try(authorizeMethod(order.method), "charge")` at the result, whose error isn't what the `charge` case carries. The return type is required. Without it, the error type has no cases, and every `$.fail` is reported as not assignable to `never`.
 
-A function joins a chain through `step`, and every helper takes its function first and its tag last:
+`$.fail` never returns, but TypeScript ends a code path at such a call only when the function's type is written out where it's declared, and `$` gets its type from `r`. Write `return $.fail(...)`.
 
-- `step(f)` brings in a function that can't fail.
-- `step(f, tag)` brings in a fallible function, wrapping its error under `tag`. It's `wrapError` for a function.
-- `rejectIf(fails, tag)` fails under `tag` when `fails` holds, and passes its input on otherwise.
-- `rejectWith(problem, tag)` does the same with a query that returns an `Option` of what's wrong, and fails carrying it. The query is an ordinary function that makes sense on its own.
+`$.try` and `$.fail` leave the body by throwing, and `r` catches only what they throw: anything else thrown in the body passes through. A `try`/`catch` in the body catches them too, so a `$.try` inside one fails into its `catch` instead of out of the body. The body can't be `async`, since a throw there becomes a rejected promise. A failure costs a throw at each `r` it leaves, which is slower than an early return where failures are frequent.
 
-A fallible function brought in without its tag passes its whole `Result` on as the value, so the next function that uses that value is where the compiler reports it.
+### Formatting
 
-`checkout`, from above, written as a chain:
+Prettier moves an arrow function's body to the next line when the body is a call whose callback spans lines, which puts every `r` body one level deeper than its function:
 
 ```typescript
-const checkout: (order: Order) => Result<Receipt, CheckoutErr> = tryFlow(
-  step(tryOver("method", authorizeMethod), "authorize"),
-  step(({ method, cents }) => chargeGateway(method, cents), "charge"),
-);
+const checkout = (order: Order): Result<Receipt, CheckoutErr> =>
+  r(($) => {
+    const authorized = $.try(authorizeMethod(order.method), "authorize");
+    return $.try(chargeGateway(authorized, order.cents), "charge");
+  });
 ```
 
-`tryOver`, [below](#tryover-and-over), runs `authorizeMethod` on the order's `method` and keeps the rest of the order.
+`ts-sumtype/prettier` is a Prettier plugin that keeps `r(($) =>` on the arrow's line and the body one level deep, as in the examples above:
 
-`flow(f1, f2, ...)` composes plain functions the same way, each receiving the previous one's return value as it is:
-
-```typescript
-const feeLabel: (method: PaymentMethod) => string = flow(processorFee, (fee) => `${fee * 100}%`);
+```json
+{ "plugins": ["ts-sumtype/prettier"] }
 ```
 
-A function in a `flow` that returns a `Result` hands the next one the whole `Result`, to read like any other value. `tryFlow` is the form that reads it: it passes the success on and stops at the first error. Both take one to six functions; for a longer chain, name a few of its functions as a chain of their own and use that as one.
+It applies to an arrow function with a declared return type whose body is a call to `r` with one callback, and leaves everything else to Prettier. A line that's too long breaks the arrow's parameters, and a one-expression body that doesn't fit moves to the next line. It finds the call by the name `r`, so `r` imported under another name is formatted like any other call. `prettier` is an optional peer dependency, needed only by this entry point.
 
 ### tryMatch and match
 
@@ -610,83 +609,89 @@ const methodName: (method: PaymentMethod) => string = match({
 });
 ```
 
-`tryMatch` takes fallible functions as handlers. It wraps each handler's error under that handler's tag, and a handler that can't fail adds no error case:
+`tryMatch` takes fallible functions as handlers, and wraps each handler's error under that handler's tag. A handler that can't fail returns `ok(value)`. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so it adds no error case:
 
 ```typescript
-import { tryMatch, type Result, type Sum } from "ts-sumtype";
+import { tryMatch, ok, r, type Result, type Sum } from "ts-sumtype";
 
-const cardFee: (card: { cardNumber: string }) => Result<number, CardNumberErr> = tryFlow(
-  (card) => cardNumber(card.cardNumber),
-  step((digits) => (digits.startsWith("3") ? 0.035 : 0.024)),
-);
+type CardFeeErr = Sum<{ number: CardNumberErr }>;
 
-const methodFee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardNumberErr }>> = tryMatch({
-  cash: step(() => 0),
-  paypal: step(() => 0.029),
+const cardFee = (card: { cardNumber: string }): Result<number, CardFeeErr> => r(($) => {
+  const digits = $.try(cardNumber(card.cardNumber), "number");
+  return digits.startsWith("3") ? 0.035 : 0.024;
+});
+
+const methodFee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardFeeErr }>> = tryMatch({
+  cash: () => ok(0),
+  paypal: () => ok(0.029),
   creditCard: cardFee,
-  crypto: step(() => 0.01),
+  crypto: () => ok(0.01),
 });
 ```
 
-Both take their types from the declared constant: each handler's payload, and the type to check the result against. A missing handler, a handler for a tag the sum doesn't have, and a result the declared type doesn't allow are each a compile error, reported where it is written. Inside a declared `flow` or `tryFlow`, they take their input type from the function before them.
+Both take their types from the declared constant: each handler's payload, and the type to check the result against. A missing handler, a handler for a tag the sum doesn't have, and a result the declared type doesn't allow are each a compile error, reported where it is written. A handler written with `r` is a function of its own, like `cardFee`, since `r` takes its types from a declared return type.
 
-### tryOver and over
+### patch
 
-`over(key, f)` updates one part of a value, an object's key or a tuple's index, and rebuilds the whole around the result without changing the original. It fits `.map`:
+`patch(whole, changes)` returns a copy of `whole` with the parts `changes` names replaced. `changes` mirrors the structure of `whole`, with a function at each part to change, which receives the part:
 
 ```typescript
-import { over, tryOver, type Fallible } from "ts-sumtype";
+import { patch } from "ts-sumtype";
 
-type CardForm = { holder: string; card: { number: string; expiry: string } };
+type CardForm = { holder: string; card: { number: string; expiry: { month: string; year: string } } };
 
-forms.map(over("holder", (holder) => holder.toUpperCase()));
+const form: CardForm = { holder: "ada", card: { number: "4111 1111 1111 1111", expiry: { month: "12", year: "30" } } };
+patch(form, { holder: (holder) => holder.toUpperCase(), card: { expiry: { month: Number } } });
+// { holder: "ADA", card: { number: "4111 1111 1111 1111", expiry: { month: 12, year: "30" } } }
 ```
 
-A deeper part is reached by nesting, one key per call, which keeps autocomplete on every key and reports a misspelled key where it is written. The part may change type, and the whole's type follows it: `over("card", over("number", Number))` produces a form whose card number is a `number`.
+Several parts change at once, at any depth, and the original stays as it is. A part may change type, and the result's type follows it: above, `expiry.month` becomes a `number`. A misspelled key is reported where it is written. A part changes through a function, so a fixed value is written `() => value`, and an array is replaced whole. A key the value doesn't have is skipped, so on a sum, `patch(shape, { object: (fields) => fields.length })` changes only the `object` case.
 
-`tryOver(key, f)` is the form for a fallible function:
+A part that can fail goes through `$.try`:
 
 ```typescript
-const parseForm: Fallible<CardForm, CardForm, CardNumberErr> = tryOver("card", tryOver("number", cardNumber));
+type FormErr = Sum<{ number: CardNumberErr }>;
 
-parseForm({ holder: "Ada", card: { number: "4111 1111 1111 1111", expiry: "12/30" } });
-// { tag: "ok", ok: { holder: "Ada", card: { number: "4111111111111111", expiry: "12/30" } } }
+const parseForm = (form: CardForm): Result<CardForm, FormErr> => r(($) => {
+  return patch(form, { card: { number: (number) => $.try(cardNumber(number), "number") } });
+});
 ```
 
 ### Errors that say where
 
-`At<L, E>` is an error together with where it happened: `{ at, error }`. The list functions run a fallible function over every item of a list:
+`At<L, E>` is an error together with where it happened: `{ at, error }`. The list functions run a fallible function on every item of a list:
 
-- `tryMap(f, tag, at?)` collects what each item returns.
-- `tryFlatMap(f, tag, at?)` concatenates what each returns.
-- `tryReduce(f, initial, tag, at?)` folds the items into one value, starting from `initial`.
+- `tryMap(items, f, at?)` collects what each item returns.
+- `tryFlatMap(items, f, at?)` concatenates what each returns.
+- `tryReduce(items, f, initial, at?)` folds the items into one value, starting from `initial`.
 
-The first item that fails stops them, and its error comes back under `tag`, located at the item's index, or at `at(item)` when given. Its type is `Located<L, E>`, which is `At<L, E>`, or `never` when `f` can't fail. `prepend(items)` puts items ahead of a list, and joins a `try` composition through `step`.
+The first item that fails stops them, and its error comes back located at the item's index, or at `at(item)` when given. Its type is `Located<L, E>`, which is `At<L, E>`, or `never` when `f` can't fail. The caller wraps it under its own tag, usually through `$.try`.
 
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
 ```typescript
-import { tryFlow, step, lazy, rejectIf, tryFlatMap, tryMatch, tryOver, type At, type Fallible, type Sum, type Unit } from "ts-sumtype";
+import { r, ok, tryFlatMap, tryMatch, type At, type Result, type Sum, type Unit } from "ts-sumtype";
 
 type Field = { readonly key: string; readonly shape: Shape };
 type Shape = Sum<{ scalar: Unit; object: readonly Field[] }>;
 type Column = readonly string[];
 
 type ColumnsErr = Sum<{ object: ObjectErr }>;
-type ObjectErr = Sum<{ noFields: Unit; field: At<string, ColumnsErr> }>;
+type ObjectErr = Sum<{ noFields: Unit; field: At<string, FieldErr> }>;
+type FieldErr = Sum<{ dotInKey: Unit; shape: ColumnsErr }>;
 
-const fieldColumns: Fallible<Field, readonly Column[], ColumnsErr> = tryFlow(
-  tryOver("shape", lazy(() => columns)),
-  step(({ key, shape }) => shape.map((path) => [key, ...path])),
-);
+const fieldColumns = ({ key, shape }: Field): Result<readonly Column[], FieldErr> => r(($) => {
+  if (key.includes(".")) return $.fail("dotInKey");
+  return $.try(columns(shape), "shape").map((path) => [key, ...path]);
+});
 
-const objectColumns: Fallible<readonly Field[], readonly Column[], ObjectErr> = tryFlow(
-  rejectIf((fields) => fields.length === 0, "noFields"),
-  tryFlatMap(fieldColumns, "field", (field) => field.key),
-);
+const objectColumns = (fields: readonly Field[]): Result<readonly Column[], ObjectErr> => r(($) => {
+  if (fields.length === 0) return $.fail("noFields");
+  return $.try(tryFlatMap(fields, fieldColumns, (field) => field.key), "field");
+});
 
-const columns: Fallible<Shape, readonly Column[], ColumnsErr> = tryMatch({
-  scalar: step(() => [[]]),
+const columns: (shape: Shape) => Result<readonly Column[], ColumnsErr> = tryMatch({
+  scalar: () => ok([[]]),
   object: objectColumns,
 });
 ```
@@ -694,28 +699,26 @@ const columns: Fallible<Shape, readonly Column[], ColumnsErr> = tryMatch({
 An order whose `shipping` field is an object with no fields fails with an error that reads, from the outside in, as the path down to it:
 
 ```typescript
-{ tag: "error", error: { tag: "object", object: { tag: "field", field: {
-  at: "shipping", error: { tag: "object", object: { tag: "noFields", noFields: null } } } } } }
+{ tag: "error", error: { tag: "object", object: { tag: "field", field: { at: "shipping",
+  error: { tag: "shape", shape: { tag: "object", object: { tag: "noFields", noFields: null } } } } } } }
 ```
 
 None of these functions is told where it is. Each builds its result from its children's results, and the location is added on the way back up, one level per `tryFlatMap`.
 
-A chain reads its functions when it's built, so the constants are declared children first. `fieldColumns` refers back to `columns`, declared after it, through `lazy(() => columns)`, which looks `columns` up each time it's called. Without `lazy`, the compiler rejects the reference: `Block-scoped variable 'columns' used before its declaration`.
+`tryMatch` reads its handlers when it's built, so `columns` is declared after them. A function written with `r` looks a name up only when it runs, so `fieldColumns` can call `columns` before its declaration.
 
 ### At a glance
 
 | Helper | Takes → gives | Its error |
 |---|---|---|
-| `tryFlow(f1, …, f6)` | `f1`'s input → the last function's output | every function's error |
-| `step(f)` | `f`'s input → `f`'s output | none |
-| `step(f, tag)` | as `f` | `f`'s, under `tag` |
-| `rejectIf(fails, tag)` | its input, unchanged | `tag`, with no payload |
-| `rejectWith(problem, tag)` | its input, unchanged | `tag`, carrying the problem found |
-| `tryMap(f, tag, at?)` | items → every item's output | `tag`, carrying `{ at, error }`, at the index or `at(item)` |
-| `tryFlatMap(f, tag, at?)` | items → every item's output, concatenated | the same |
-| `tryReduce(f, initial, tag, at?)` | items → the folded value | the same |
+| `r(($) => body)` | runs `body` → what it returns | the declared return type's |
+| `$.try(result, tag)` | a `Result` → its success value | `result`'s, under `tag` |
+| `$.fail(tag, payload?)` | leaves the body | `tag`, carrying `payload` |
+| `tryMap(items, f, at?)` | items → every item's output | `{ at, error }`, at the index or `at(item)` |
+| `tryFlatMap(items, f, at?)` | items → every item's output, concatenated | the same |
+| `tryReduce(items, f, initial, at?)` | items → the folded value | the same |
 | `tryMatch(handlers)` | a sum → any handler's output | each handler's, under its tag |
-| `tryOver(key, f)` | a value → the value with that part replaced | `f`'s |
+| `patch(whole, changes)` | a value → the value with those parts replaced | none |
 
 ---
 
@@ -811,7 +814,7 @@ This is the same representation this README argued against building new code aro
 - **`"tag"` is a reserved case name.** Its payload key would collide with the discriminant, so `Sum<{ tag: T }>` intersects the discriminant with `T` on the same field; for most `T` that leaves `tag` uninhabitable. Pick any other case name.
 - **Variance is covariant.** `Result<Receipt, never>` is assignable to `Result<Receipt, GatewayErr>`; the reverse (narrowing) is a type error.
 - **`Frozen` reaches one unrolling of a recursive type.** `Frozen<Sum<{ ... }>>` at a declaration is frozen all the way down; `Frozen<SomeRecursiveTypeDeclaredElsewhere>` leaves that type's inner occurrences mutable, see [Frozen](#frozen).
-- **TypeScript 5.4 or later, Node 20 or later.** `wrapError`, `match` and `tryMatch` use `NoInfer`, which TypeScript 5.4 introduced, and `over` and `tryOver` rebuild a tuple with `Array.prototype.with`, which Node 20 introduced.
+- **TypeScript 5.4 or later.** `wrapError`, `match`, `tryMatch` and `r` use `NoInfer`, which TypeScript 5.4 introduced.
 - **Payloads must be JSON-safe** to survive a `JSON.stringify` / `JSON.parse` round-trip: functions, symbols, and `bigint` don't survive it, and neither does `undefined`, which is silently dropped from whatever key holds it. That last one is why empty payloads are typed `Unit`/`null` rather than `undefined`, see [Unit](#unit).
 
 ---
@@ -825,7 +828,7 @@ import { ok } from "ts-sumtype/result";
 import { variant } from "ts-sumtype/variant";
 ```
 
-`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/flow`, `/match`, `/over`, `/list`.
+`ts-sumtype/variant`, `/result`, `/option`, `/unwrap`, `/adapt`, `/match`, `/list`, `/r`, `/patch`. `ts-sumtype/prettier` is the [Prettier plugin](#formatting), which the root doesn't export.
 
 ---
 
