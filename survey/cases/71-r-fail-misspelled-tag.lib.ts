@@ -7,7 +7,7 @@
 import { r, errVariant, ok, type Result, type Sum, type Unit } from "ts-sumtype";
 
 type ParseErr = Sum<{ notANumber: Unit }>;
-type ReadErr = Sum<{ empty: Unit; parse: ParseErr }>;
+type ReadErr = Sum<{ empty: Unit; tooLong: Unit; parse: ParseErr }>;
 
 const parse = (raw: string): Result<number, ParseErr> =>
   Number.isNaN(Number(raw)) ? errVariant("notANumber") : ok(Number(raw));

@@ -3,13 +3,12 @@ import { ok, err, isOk, type Result } from "./result";
 
 type TagIn<E> = E extends { readonly tag: infer K extends string } ? K : never;
 type PayloadIn<E, K> = E extends { readonly tag: K } ? E[K & keyof E] : never;
-type UnitTagIn<E> = { [K in TagIn<E>]: [PayloadIn<E, K>] extends [Unit] ? K : never }[TagIn<E>];
 
 /** What `r` hands its body: the two ways to leave it with an error of type `E`. */
 export type Failing<E> = {
   /** Leaves the body with the case `tag` of `E`. Written `return $.fail(...)`. */
   readonly fail: {
-    (tag: UnitTagIn<E>): never;
+    (tag: { [K in TagIn<E>]: [PayloadIn<E, K>] extends [Unit] ? K : never }[TagIn<E>]): never;
     <const K extends TagIn<E>>(tag: K, payload: PayloadIn<E, K>): never;
   };
   /** The success value of `result`, or leaves the body with its error under `tag`. */

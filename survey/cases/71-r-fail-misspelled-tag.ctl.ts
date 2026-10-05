@@ -6,7 +6,7 @@
 
 type Result<T, E> = { ok: true; value: T } | { ok: false; error: E };
 type ParseErr = { kind: "notANumber" };
-type ReadErr = { kind: "empty" } | { kind: "parse"; parse: ParseErr };
+type ReadErr = { kind: "empty" } | { kind: "tooLong" } | { kind: "parse"; parse: ParseErr };
 
 const parse = (raw: string): Result<number, ParseErr> =>
   Number.isNaN(Number(raw)) ? { ok: false, error: { kind: "notANumber" } } : { ok: true, value: Number(raw) };
