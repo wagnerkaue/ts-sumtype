@@ -81,6 +81,14 @@ export function wrapError<T, E = never, const K extends string = string>(
   return isOk(result) ? result : (err(variant(tag, result.error)) as never);
 }
 
+/**
+ * `f` returning its value as a `Result` with no error case, for where a fallible function goes and
+ * `f` can't fail: `tryMatch({ cash: infallible(() => 0), ... })`.
+ */
+export function infallible<A extends readonly unknown[], T>(f: (...args: A) => T): (...args: A) => Result<T, never> {
+  return (...args) => ok(f(...args));
+}
+
 /** Runs `f`, catching a throw into an `Err` (optionally mapped by `mapError`). */
 export function fromThrowable<T, E = unknown>(f: () => T, mapError?: (e: unknown) => E): Result<T, E> {
   try {

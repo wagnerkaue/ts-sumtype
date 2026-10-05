@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { ok, errVariant, some, none, someOr, variant, unwrap, fromFlat, patch, match, tryMatch, tryMap, tryReduce, r } = require("../dist/index.cjs");
+const { ok, errVariant, some, none, someOr, variant, unwrap, fromFlat, patch, match, tryMatch, tryMap, tryReduce, r, infallible } = require("../dist/index.cjs");
 const { tryMap: tryMapEntry } = require("../dist/list.cjs");
 const { r: rEntry } = require("../dist/r.cjs");
 
@@ -18,7 +18,7 @@ const doubled = match({ leaf: (n) => n, wrap: (inner) => doubled(inner) * 2 });
 assert.equal(doubled(variant("wrap", variant("leaf", 3))), 6);
 assert.deepEqual(tryMap([1, -1], (n) => (n < 0 ? { tag: "error", error: "negative" } : { tag: "ok", ok: n * 2 })), { tag: "error", error: { at: 1, error: "negative" } });
 assert.deepEqual(tryReduce([1, 2, 3], (sum, n) => ({ tag: "ok", ok: sum + n }), 0), { tag: "ok", ok: 6 });
-const size = tryMatch({ one: () => ok(1), many: (n) => (n < 0 ? errVariant("negative") : ok(n)) });
+const size = tryMatch({ one: infallible(() => 1), many: (n) => (n < 0 ? errVariant("negative") : ok(n)) });
 assert.deepEqual(size(variant("many", 3)), { tag: "ok", ok: 3 });
 assert.deepEqual(size(variant("many", -1)), { tag: "error", error: { tag: "many", many: { tag: "negative", negative: null } } });
 assert.deepEqual(tryMapEntry([1], (n) => ok(n + 1)), { tag: "ok", ok: [2] });

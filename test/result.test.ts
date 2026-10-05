@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ok, err, errVariant, isOk, isErr, isVariant, fromThrowable, toOption, variant, wrapError } from "../src/index";
+import { ok, err, errVariant, isOk, isErr, isVariant, fromThrowable, toOption, variant, wrapError, infallible } from "../src/index";
 
 describe("result", () => {
   it("ok(1) deep-equals { tag: 'ok', ok: 1 }", () => {
@@ -48,6 +48,11 @@ describe("result", () => {
       error: { tag: "parse", parse: "bad" },
     });
     expect(wrapError(ok(1), "parse")).toEqual({ tag: "ok", ok: 1 });
+  });
+
+  it("infallible returns the function's value as a success", () => {
+    const area = infallible((width: number, height: number) => width * height);
+    expect(area(2, 3)).toEqual({ tag: "ok", ok: 6 });
   });
 
   it("toOption converts correctly", () => {

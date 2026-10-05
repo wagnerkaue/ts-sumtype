@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { format } from "prettier";
 import * as rPlugin from "../dist/prettier.js";
-import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, patch, match, tryMatch, tryMap, tryReduce, r } from "../dist/index.js";
+import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, patch, match, tryMatch, tryMap, tryReduce, r, infallible } from "../dist/index.js";
 
 function pipeline(x) {
   const doubled = x > 0 ? ok(x * 10) : errVariant("neg", null);
@@ -28,7 +28,7 @@ const doubled = match({ leaf: (n) => n, wrap: (inner) => doubled(inner) * 2 });
 assert.equal(doubled(variant("wrap", variant("leaf", 3))), 6);
 assert.deepEqual(tryMap([1, -1], (n) => (n < 0 ? { tag: "error", error: "negative" } : { tag: "ok", ok: n * 2 })), { tag: "error", error: { at: 1, error: "negative" } });
 assert.deepEqual(tryReduce([1, 2, 3], (sum, n) => ({ tag: "ok", ok: sum + n }), 0), { tag: "ok", ok: 6 });
-const size = tryMatch({ one: () => ok(1), many: (n) => (n < 0 ? errVariant("negative") : ok(n)) });
+const size = tryMatch({ one: infallible(() => 1), many: (n) => (n < 0 ? errVariant("negative") : ok(n)) });
 assert.deepEqual(size(variant("many", 3)), { tag: "ok", ok: 3 });
 assert.deepEqual(size(variant("many", -1)), { tag: "error", error: { tag: "many", many: { tag: "negative", negative: null } } });
 const half = (n) => r(($) => (n % 2 === 0 ? n / 2 : $.fail("odd")));

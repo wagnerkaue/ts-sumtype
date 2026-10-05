@@ -1,7 +1,7 @@
 import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
-  wrapError, type Fallible,
+  wrapError, infallible, type Fallible,
   tryReduce, tryMap, tryFlatMap,
   patch, match, tryMatch, r,
   type Ok, type Err, type Result, type At, type Wrapped, type Located,
@@ -266,10 +266,10 @@ const innerAsOuter: OuterFrozen = innerFrozen;
 
 // ── T14: an infallible Result has no error case -- `Result<T, never>` is just `Ok<T>`,
 // so the success payload is reachable without narrowing first.
-function infallible(x: number): Result<number, never> {
+function t14Total(x: number): Result<number, never> {
   return ok(x);
 }
-const infallibleValue: number = infallible(5).ok;
+const t14TotalValue: number = t14Total(5).ok;
 
 // the collapse must not leak into a generic `E`: a function still building a `Result<T, E>`
 // for an unresolved `E` accepts `err(...)` with no assertion at the construction site.
@@ -566,6 +566,44 @@ function t25First<T>(items: readonly T[]): Result<T, Sum<{ empty: Unit }>> {
     return first;
   });
 }
+
+// ── T26: infallible -- a function that can't fail, where a fallible one goes
+type T26Shape = Sum<{ scalar: string; object: readonly string[]; empty: Unit }>;
+type T26Item = { readonly key: string; readonly size: number };
+declare const t26Items: readonly T26Item[];
+
+// payload types come from the declared constant, and no error case is added
+const t26Describe: Fallible<T26Shape, string, never> = tryMatch({
+  scalar: infallible((scalar) => scalar.toUpperCase()),
+  object: infallible((fields) => fields.join(",")),
+  empty: infallible(() => "empty"),
+});
+const t26Sized: Fallible<T26Shape, number, Sum<{ object: "noFields" }>> = tryMatch({
+  scalar: infallible((scalar) => scalar.length),
+  object: (fields) => (fields.length === 0 ? err("noFields") : ok(fields.length)),
+  empty: infallible(() => 0),
+});
+
+// item types come from the list
+const t26Keys: readonly string[] = tryMap(t26Items, infallible((item) => item.key)).ok;
+const t26Flat: readonly string[] = tryFlatMap(t26Items, infallible((item) => [item.key])).ok;
+const t26Total: number = tryReduce(t26Items, infallible((sum, item) => sum + item.size), 0).ok;
+
+const t26Length = infallible((text: string) => text.length);
+const t26LengthValue: number = t26Length("abc").ok;
+
+const t26WrongPayload: Fallible<T26Shape, string, never> = tryMatch({
+  // @ts-expect-error the scalar's payload is a string
+  scalar: infallible((scalar: number) => String(scalar)),
+  object: infallible((fields) => fields.join(",")),
+  empty: infallible(() => "empty"),
+});
+// @ts-expect-error the output is a number, not a string
+const t26WrongOutput: Fallible<T26Shape, string, never> = tryMatch({
+  scalar: infallible((scalar) => scalar.length),
+  object: infallible((fields) => fields.join(",")),
+  empty: infallible(() => "empty"),
+});
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.

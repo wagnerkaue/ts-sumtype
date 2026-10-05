@@ -609,10 +609,10 @@ const methodName: (method: PaymentMethod) => string = match({
 });
 ```
 
-`tryMatch` takes fallible functions as handlers, and wraps each handler's error under that handler's tag. A handler that can't fail returns `ok(value)`. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so it adds no error case:
+`tryMatch` takes fallible functions as handlers, and wraps each handler's error under that handler's tag. A handler that can't fail is a plain function brought in through `infallible`, which returns its value as a `Result` with no error case. A `Result` whose error type is `never` is just its `Ok` case, since `Err<never>` is `never`, so the handler adds no error case:
 
 ```typescript
-import { tryMatch, ok, r, type Result, type Sum } from "ts-sumtype";
+import { tryMatch, infallible, r, type Result, type Sum } from "ts-sumtype";
 
 type CardFeeErr = Sum<{ number: CardNumberErr }>;
 
@@ -622,10 +622,10 @@ const cardFee = (card: { cardNumber: string }): Result<number, CardFeeErr> => r(
 });
 
 const methodFee: (method: PaymentMethod) => Result<number, Sum<{ creditCard: CardFeeErr }>> = tryMatch({
-  cash: () => ok(0),
-  paypal: () => ok(0.029),
+  cash: infallible(() => 0),
+  paypal: infallible(() => 0.029),
   creditCard: cardFee,
-  crypto: () => ok(0.01),
+  crypto: infallible(() => 0.01),
 });
 ```
 
@@ -670,7 +670,7 @@ The first item that fails stops them, and its error comes back located at the it
 Together, in a function that lists the columns a nested record flattens into, each column being the path to a scalar:
 
 ```typescript
-import { r, ok, tryFlatMap, tryMatch, type At, type Result, type Sum, type Unit } from "ts-sumtype";
+import { r, infallible, tryFlatMap, tryMatch, type At, type Result, type Sum, type Unit } from "ts-sumtype";
 
 type Field = { readonly key: string; readonly shape: Shape };
 type Shape = Sum<{ scalar: Unit; object: readonly Field[] }>;
@@ -691,7 +691,7 @@ const objectColumns = (fields: readonly Field[]): Result<readonly Column[], Obje
 });
 
 const columns: (shape: Shape) => Result<readonly Column[], ColumnsErr> = tryMatch({
-  scalar: () => ok([[]]),
+  scalar: infallible(() => [[]]),
   object: objectColumns,
 });
 ```
@@ -718,6 +718,7 @@ None of these functions is told where it is. Each builds its result from its chi
 | `tryFlatMap(items, f, at?)` | items → every item's output, concatenated | the same |
 | `tryReduce(items, f, initial, at?)` | items → the folded value | the same |
 | `tryMatch(handlers)` | a sum → any handler's output | each handler's, under its tag |
+| `infallible(f)` | as `f` | none |
 | `patch(whole, changes)` | a value → the value with those parts replaced | none |
 
 ---
