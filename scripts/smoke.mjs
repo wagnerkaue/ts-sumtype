@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { format } from "prettier";
+import * as rPlugin from "../dist/prettier.js";
 import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch, tryMap, tryReduce, r } from "../dist/index.js";
 
 function pipeline(x) {
@@ -46,5 +48,9 @@ assert.deepEqual(fromKeyed("kind", "data")({ kind: "video", data: { duration: 4 
   video: { duration: 4 },
 });
 assert.deepEqual(fromEnum("active"), { tag: "active", active: null });
+
+const unformatted = "const half = (n: number): R =>\n  r(($) => {\n    return n / 2;\n  });\n";
+const formatted = await format(unformatted, { parser: "typescript", plugins: [rPlugin] });
+assert.equal(formatted, "const half = (n: number): R => r(($) => {\n  return n / 2;\n});\n");
 
 console.log("smoke esm: ok");
