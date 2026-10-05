@@ -24,6 +24,7 @@ const INTERNAL_NAMES = [
   "UnwrapOk", "UnwrapSome", "HaltErr", "HaltNone", "EnsureOk", "EnsureSome",
   "Unflattened", "Rekeyed",
   "HandlersFor", "NoOtherTags", "OutputOf", "WrappedErrorOf", "OkOf", "ErrorOf", "ReturnOf",
+  "TagIn", "PayloadIn", "UnitTagIn", "Failure",
 ];
 
 // `Sum<{ a: X }>` prints as `{ readonly tag: "a" } & Pick<{ a: X }, "a">`. Every occurrence is

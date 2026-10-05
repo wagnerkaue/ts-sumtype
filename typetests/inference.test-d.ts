@@ -3,7 +3,7 @@ import {
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   mapError, wrapError,
   flow, tryFlow, step, lazy, prepend, rejectWith, rejectIf, tryReduce, tryMap, tryFlatMap, type Fallible,
-  tryOver, over, match, tryMatch,
+  tryOver, over, match, tryMatch, r,
   type Ok, type Err, type Result, type At, type Wrapped, type Located,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
@@ -653,6 +653,67 @@ function t24Each<N, B, E>(f: Fallible<N, B, E>): Fallible<readonly N[], readonly
 const t24TaggedTotal: Fallible<number, number, never> = step((n: number) => n + 1, "inc");
 // @ts-expect-error without its tag, the fallible function's Result becomes the success value
 const t24MissingTag: Fallible<string, number, Sum<{ parse: ParseErr }>> = tryFlow(step(parseId));
+
+// ── T25: r -- each tag and payload checked against the declared return type, where it's written
+type T25ShapeErr = Sum<{ noFields: Unit }>;
+type T25Err = Sum<{ dotInKey: Unit; shape: T25ShapeErr; tooLong: number }>;
+declare function t25Leaves(key: string): Result<readonly string[], T25ShapeErr>;
+
+function t25Field(key: string): Result<readonly string[], T25Err> {
+  return r(($) => {
+    if (key.includes(".")) return $.fail("dotInKey");
+    if (key.length > 63) return $.fail("tooLong", key.length);
+    return $.try(t25Leaves(key), "shape");
+  });
+}
+
+function t25Mistakes(key: string): Result<readonly string[], T25Err> {
+  return r(($) => {
+    // @ts-expect-error a tag the error type doesn't have
+    if (key === "a") return $.fail("dotInKy");
+    // @ts-expect-error one argument is only for a case whose payload is Unit
+    if (key === "b") return $.fail("tooLong");
+    // @ts-expect-error the payload's type is the case's
+    if (key === "c") return $.fail("tooLong", "many");
+    // @ts-expect-error try wraps under a tag the error type has
+    if (key === "d") return $.try(t25Leaves(key), "shap");
+    // @ts-expect-error that tag's payload is the result's error
+    if (key === "e") return $.try(t25Leaves(key), "dotInKey");
+    return [];
+  });
+}
+
+function t25WrongValue(key: string): Result<readonly string[], T25Err> {
+  // @ts-expect-error the success value is the declared one
+  return r(($) => {
+    if (key === "") return $.fail("dotInKey");
+    return key.length;
+  });
+}
+
+const t25Undeclared = (key: string) =>
+  r(($) => {
+    // @ts-expect-error without a declared return type, the error type has no cases
+    if (key === "") return $.fail("empty");
+    return key;
+  });
+
+function t25Total(n: number): Result<number, never> {
+  return r(($) => {
+    // @ts-expect-error a function that can't fail has no case to fail with
+    if (n < 0) return $.fail("negative");
+    return n * 2;
+  });
+}
+const t25TotalValue: number = t25Total(1).ok;
+
+function t25First<T>(items: readonly T[]): Result<T, Sum<{ empty: Unit }>> {
+  return r(($) => {
+    const first = items[0];
+    if (first === undefined) return $.fail("empty");
+    return first;
+  });
+}
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
 // array in between. This shape once produced a self-referential type alias error; it must not.

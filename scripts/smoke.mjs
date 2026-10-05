@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch, tryMap, tryReduce } from "../dist/index.js";
+import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch, tryMap, tryReduce, r } from "../dist/index.js";
 
 function pipeline(x) {
   const doubled = x > 0 ? ok(x * 10) : errVariant("neg", null);
@@ -33,6 +33,9 @@ assert.deepEqual(tryReduce((sum, n) => ({ tag: "ok", ok: sum + n }), 0, "term")(
 const size = tryMatch({ one: step(() => 1), many: rejectIf((n) => n < 0, "negative") });
 assert.deepEqual(size(variant("many", 3)), { tag: "ok", ok: 3 });
 assert.deepEqual(size(variant("many", -1)), { tag: "error", error: { tag: "many", many: { tag: "negative", negative: null } } });
+const half = (n) => r(($) => (n % 2 === 0 ? n / 2 : $.fail("odd")));
+assert.deepEqual(half(4), { tag: "ok", ok: 2 });
+assert.deepEqual(half(3), { tag: "error", error: { tag: "odd", odd: null } });
 
 assert.deepEqual(fromFlat("type")({ type: "video", duration: 4 }), {
   tag: "video",

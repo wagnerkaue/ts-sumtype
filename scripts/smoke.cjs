@@ -1,7 +1,8 @@
 const assert = require("node:assert/strict");
-const { ok, some, none, someOr, variant, unwrap, fromFlat, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch, tryMap, tryReduce } = require("../dist/index.cjs");
+const { ok, some, none, someOr, variant, unwrap, fromFlat, flow, tryFlow, step, lazy, rejectIf, tryOver, match, tryMatch, tryMap, tryReduce, r } = require("../dist/index.cjs");
 const { tryFlow: flowEntry, step: stepEntry } = require("../dist/flow.cjs");
 const { tryMap: tryMapEntry } = require("../dist/list.cjs");
+const { r: rEntry } = require("../dist/r.cjs");
 
 assert.equal(unwrap(ok(2)), 2);
 assert.equal(unwrap(someOr(some(3), "missing")), 3);
@@ -27,4 +28,8 @@ assert.deepEqual(size(variant("many", 3)), { tag: "ok", ok: 3 });
 assert.deepEqual(size(variant("many", -1)), { tag: "error", error: { tag: "many", many: { tag: "negative", negative: null } } });
 assert.deepEqual(flowEntry(stepEntry((n) => n + 1))(1), { tag: "ok", ok: 2 });
 assert.deepEqual(tryMapEntry(stepEntry((n) => n + 1), "item")([1]), { tag: "ok", ok: [2] });
+const half = (n) => r(($) => (n % 2 === 0 ? n / 2 : $.fail("odd")));
+assert.deepEqual(half(4), { tag: "ok", ok: 2 });
+assert.deepEqual(half(3), { tag: "error", error: { tag: "odd", odd: null } });
+assert.deepEqual(rEntry(($) => $.try({ tag: "ok", ok: 1 }, "never")), { tag: "ok", ok: 1 });
 console.log("smoke cjs: ok");
