@@ -1,8 +1,8 @@
 import {
   variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
-  mapError, wrapError,
-  flow, tryFlow, step, lazy, prepend, rejectWith, rejectIf, tryReduce, tryMap, tryFlatMap, type Fallible,
+  wrapError, type Fallible,
+  tryReduce, tryMap, tryFlatMap,
   tryOver, over, match, tryMatch, r,
   type Ok, type Err, type Result, type At, type Wrapped, type Located,
   some, none, isSome, isNone, someOr,
@@ -112,8 +112,7 @@ function advance(a: Action): number {
 const m1Probe: number = advance(action);
 
 // ── T9: multi-step Result/Option composition via early-return. The return type is the union of
-// every branch's outcome, one sum type at a time; T12 covers that same shape through
-// tryFlow.
+// every branch's outcome, one sum type at a time.
 type NotFoundErr = Sum<{ not_found: { id: number } }>;
 declare function parseId(s: string): Result<number, ParseErr>;
 declare function findUser(id: number): Result<{ name: string }, NotFoundErr>;
@@ -191,34 +190,6 @@ type Fanned = Sum<{ a: number; b: string }>;
 type Joined = Sum<{ a: number }> | Sum<{ b: string }>;
 const fannedAsJoined: Joined = variant("a", 1) as Fanned;
 const joinedAsFanned: Fanned = variant("b", "x") as Joined;
-
-// ── T12: tryFlow: the two Result steps from T9, composed instead of early-returned
-declare function chargeGateway(id: number, cents: number): Result<{ receiptId: string }, ParseErr>;
-const p1 = tryFlow(parseId, findUser);
-const p1Probe: Fallible<string, { name: string }, ParseErr | NotFoundErr> = p1;
-
-const p2: Fallible<string, { receiptId: string }, ParseErr> = tryFlow(parseId, (id) => chargeGateway(id, 500));
-
-// a plain function joins through step, mixed with a fallible one
-const p3: Fallible<number, number, "negative"> = tryFlow(
-  step((n) => n + 1),
-  (n) => (n > 0 ? ok(n) : err("negative")),
-);
-
-// tryFlow composes steps whose types are still generic: inverting an isomorphism builds a step out
-// of two it was handed
-type Isomorphism<A, B, K> = {
-  canon: (a: A) => Result<K, string>;
-  do: (a: A) => Result<B, string>;
-  undo: (b: B) => Result<A, string>;
-};
-function inverse<A, B, K>(i: Isomorphism<A, B, K>): Isomorphism<B, A, K> {
-  return {
-    canon: tryFlow(i.undo, i.canon),
-    do: i.undo,
-    undo: i.do,
-  };
-}
 
 // ── T13: Frozen -- payloads and the slots holding them, immutable with nothing annotated
 type Term = Frozen<Sum<{
@@ -300,9 +271,6 @@ function infallible(x: number): Result<number, never> {
 }
 const infallibleValue: number = infallible(5).ok;
 
-// a chain of steps that can't fail reads the same way
-const flowValue: string = tryFlow(step((r: { id: string }) => r.id))({ id: "x" }).ok;
-
 // the collapse must not leak into a generic `E`: a function still building a `Result<T, E>`
 // for an unresolved `E` accepts `err(...)` with no assertion at the construction site.
 type Pair<X, EX, Y, EY> = { forward: Fallible<X, Y, EX>; backward: Fallible<Y, X, EY> };
@@ -360,7 +328,7 @@ function t14MapOk<T, U, E>(r: Result<T, E>, f: (t: T) => U): Result<U, E> {
   return ok(f(r.ok));
 }
 
-// ── T17: wrapError -- an error wrapped under a tag, and nothing added for a step that can't fail
+// ── T17: wrapError -- an error wrapped under a tag, and nothing added for a result that can't fail
 declare const t17Total: Result<number, never>;
 declare const t17Fallible: Result<number, "bad">;
 declare const t17Nested: Result<number, ParseErr>;
@@ -380,80 +348,13 @@ function t17Wrap<T, E, const K extends string>(r: Result<T, E>, tag: K): Result<
   return wrapError(r, tag);
 }
 
-const t17Mapped: Result<number, string> = mapError(t17Fallible, (e) => `${e}!`);
 declare const t17Located: At<string, "bad">;
 const t17LocatedError: "bad" = t17Located.error;
-
-// ── T18: tryFlow: a chain built once on a declared constant, each step inferring from it
-type T18ListErr = Sum<{ empty: Unit }>;
-const t18Listed: (items: readonly string[]) => Result<string, T18ListErr> = tryFlow(
-  rejectIf((items) => items.length === 0, "empty"),
-  step((items) => items.join(", ")),
-);
-
-// the chain's error is every function's error; one that can't fail, given a tag, adds no case
-type T18Err = Sum<{ parse: ParseErr; tooBig: Unit }>;
-const t18Parsed: Fallible<string, number, T18Err> = tryFlow(
-  step(parseId, "parse"),
-  rejectIf((n) => n > 100, "tooBig"),
-  step(step((n) => n * 2), "double"),
-);
-
-// a chain of steps that can't fail can't fail either, so `.ok` reads without narrowing
-const t18Total = tryFlow(step((n: number) => n + 1), step((n) => `${n}`));
-const t18TotalValue: string = t18Total(1).ok;
-
-// an inline step returning only `ok(...)` adds no error case
-const t18OkOnly: Fallible<number, number, never> = tryFlow((n: number) => ok(n + 1));
-
-// a step taking the wrong input is reported on the step before it: the annotated parameter fixes
-// the type between them, and the earlier step is the one that fails to produce it
-const t18Mismatch: Fallible<string, number, ParseErr> = tryFlow(
-  // @ts-expect-error parseId produces a number, but the next step takes a string
-  parseId,
-  step((id: string) => id.length),
-);
-
-const t18Dotted: Fallible<readonly string[], readonly string[], Sum<{ dotInSegment: string }>> = rejectWith(
-  (path) => fromNullable(path.find((segment) => segment.includes("."))),
-  "dotInSegment",
-);
-const t18Prepended: (rest: readonly number[]) => readonly number[] = prepend([0]);
-const t18PrependStep: Fallible<readonly number[], readonly number[], never> = step(prepend([0]));
-
-// tryFlatMap locates a failure at the item's index, or at at(item); a function that can't fail locates nothing
-type T18Item = { readonly key: string; readonly size: number };
-const t18ByIndex: Fallible<readonly T18Item[], readonly number[], Sum<{ item: At<number, "two"> }>> = tryFlatMap(
-  (item: T18Item) => (item.size === 2 ? err("two") : ok([item.size])),
-  "item",
-);
-const t18ByKey: Fallible<readonly T18Item[], readonly number[], Sum<{ item: At<string, "two"> }>> = tryFlatMap(
-  (item: T18Item) => (item.size === 2 ? err("two") : ok([item.size])),
-  "item",
-  (item) => item.key,
-);
-const t18AllItems = tryFlatMap(step((item: T18Item) => [item.size]), "item");
-const t18AllItemsValue: readonly number[] = t18AllItems([]).ok;
-
-// a location of another type than the declared one is rejected, the index included
-// @ts-expect-error at returns a string, the declaration expects an index
-const t18WrongLocation: Fallible<readonly T18Item[], readonly number[], Sum<{ item: At<number, "two"> }>> =
-  tryFlatMap((item: T18Item) => (item.size === 2 ? err("two") : ok([item.size])), "item", (item) => item.key);
-// @ts-expect-error without at, the location is the index, not the key the declaration expects
-const t18MissingAt: Fallible<readonly T18Item[], readonly number[], Sum<{ item: At<string, "two"> }>> = tryFlatMap(
-  (item: T18Item) => (item.size === 2 ? err("two") : ok([item.size])),
-  "item",
-);
-
-// and tryFlow composes steps whose types are still generic
-function t18Compose<A, B, C, E>(f: Fallible<A, B, E>, g: Fallible<B, C, E>): Fallible<A, C, E> {
-  return tryFlow(f, g);
-}
 
 // ── T19: tryOver and over: one part of a structure updated, the whole rebuilt around it
 type T19Order = { code: string; payment: { card: { number: string } } };
 type T19Parsed = { code: string; payment: { card: { number: number } } };
-const t19Parse: Fallible<T19Order, T19Parsed, never> = tryOver("payment", tryOver("card", tryOver("number", step(Number))));
+const t19Parse: Fallible<T19Order, T19Parsed, never> = tryOver("payment", tryOver("card", tryOver("number", (number: string) => ok(Number(number)))));
 
 // the step's error passes through as the zoomed step's own
 const t19Fallible: Fallible<T19Order, T19Order, ParseErr> = tryOver("code", (code: string) =>
@@ -462,14 +363,14 @@ const t19Fallible: Fallible<T19Order, T19Order, ParseErr> = tryOver("code", (cod
 
 // a tuple keeps its other positions
 type T19Pair = readonly [string, number];
-const t19Bumped: Fallible<T19Pair, readonly [string, string], never> = tryOver(1, step((n) => `${n + 1}`));
+const t19Bumped: Fallible<T19Pair, readonly [string, string], never> = tryOver(1, (n) => ok(`${n + 1}`));
 const t19Over: (pair: T19Pair) => readonly [string, boolean] = over(1, (n) => n > 0);
 
 // a wrong key is reported where it is written
 // @ts-expect-error `crad` is not a key of the payment
-const t19Typo: Fallible<T19Order, T19Parsed, never> = tryOver("payment", tryOver("crad", tryOver("number", step(Number))));
+const t19Typo: Fallible<T19Order, T19Parsed, never> = tryOver("payment", tryOver("crad", tryOver("number", (number: string) => ok(Number(number)))));
 
-// ── T20: tryMatch: a step over a sum, typed from the declared constant
+// ── T20: tryMatch: a fallible function over a sum, typed from the declared constant
 type T20Shape = Sum<{ circle: number; square: number; rect: [number, number]; empty: Unit }>;
 type T20Err = Sum<{ rect: "degenerate" }>;
 
@@ -524,37 +425,6 @@ const t20UnknownOut: Fallible<Sum<{ a: number; b: number }>, number, Sum<{ a: un
   b: (n: number): Result<unknown, unknown> => t20Unknown(n),
 });
 
-// nested in a declared chain, it takes its input from the step before
-const t20Chained: Fallible<string, number, T20Err> = tryFlow(
-  step((raw: string): T20Shape => variant("circle", Number(raw))),
-  tryMatch({
-    circle: (r) => ok(Math.PI * r * r),
-    square: (side) => ok(side * side),
-    rect: ([w, h]) => (w === 0 || h === 0 ? err("degenerate") : ok(w * h)),
-    empty: () => ok(0),
-  }),
-);
-
-// ── T21: flow: plain functions composed left to right, typed from the declared constant
-type T21Path = Sum<{ here: Unit; into: { key: string; rest: T21Path } }>;
-declare const t21Dotted: (path: T21Path) => string;
-const t21Identifier: (path: T21Path) => string = flow(t21Dotted, (text) => (text === "" ? "#" : text));
-const t21Length: (path: T21Path) => number = flow((path) => t21Dotted(path), (text) => text.length);
-
-// a Result reaches the next function as a Result
-const t21Parsed: (path: T21Path) => Result<number, ParseErr> = flow(t21Dotted, parseId);
-const t21Outcome: (raw: string) => "ok" | "error" = flow(parseId, (r) => r.tag);
-
-const t21Mismatch: (path: T21Path) => number = flow(
-  // @ts-expect-error t21Dotted produces a string, but the next function takes a number
-  t21Dotted,
-  (n: number) => n + 1,
-);
-
-function t21Compose<A, B, C>(f: (a: A) => B, g: (b: B) => C): (a: A) => C {
-  return flow(f, g);
-}
-
 // ── T22: match: a function over a sum, typed from the declared constant
 type T22Path = Sum<{ here: Unit; into: { key: string; rest: T22Path } }>;
 const t22Dotted: (path: T22Path) => string = match({
@@ -595,34 +465,7 @@ const t22UnknownAsNumber: (s: Sum<{ a: number; b: number }>) => number = match({
   b: (n: number): unknown => t22Unknown(n),
 });
 
-// ── T23: lazy: a chain refers to a constant declared after it
-type T23Field = { readonly key: string; readonly shape: T23Shape };
-type T23Shape = Sum<{ scalar: Unit; object: readonly T23Field[] }>;
-type T23Column = readonly string[];
-type T23Err = Sum<{ object: T23ObjectErr }>;
-type T23ObjectErr = Sum<{ noFields: Unit; field: At<string, T23Err> }>;
-
-const t23FieldColumns: Fallible<T23Field, readonly T23Column[], T23Err> = tryFlow(
-  tryOver("shape", lazy(() => t23Columns)),
-  step(({ key, shape }) => shape.map((path) => [key, ...path])),
-);
-const t23ObjectColumns: Fallible<readonly T23Field[], readonly T23Column[], T23ObjectErr> = tryFlow(
-  rejectIf((fields) => fields.length === 0, "noFields"),
-  tryFlatMap(t23FieldColumns, "field", (field) => field.key),
-);
-const t23Columns: Fallible<T23Shape, readonly T23Column[], T23Err> = tryMatch({
-  scalar: step(() => [[]]),
-  object: t23ObjectColumns,
-});
-
-type T23Nest = Sum<{ leaf: number; wrap: T23Nest }>;
-const t23Doubled: (nest: T23Nest) => number = match({
-  leaf: (n) => n,
-  // @ts-expect-error without lazy, the constant is read while it is being declared
-  wrap: flow(t23Doubled, (n) => n * 2),
-});
-
-// ── T24: tryMap and tryReduce, and step's two forms
+// ── T24: tryMap and tryReduce
 type T24Item = { readonly key: string; readonly size: number };
 const t24Size = (item: T24Item) => (item.size < 0 ? err("negative") : ok(item.size));
 
@@ -635,8 +478,6 @@ const t24ByKey: Fallible<readonly T24Item[], readonly number[], Sum<{ item: At<s
   "item",
   (item) => item.key,
 );
-const t24Total: Fallible<readonly T24Item[], readonly string[], never> = tryMap(step((item: T24Item) => item.key), "item");
-const t24TotalValue: readonly string[] = t24Total([]).ok;
 
 const t24Sum: Fallible<readonly T24Item[], number, Sum<{ term: At<number, "negative"> }>> = tryReduce(
   (sum, item) => (item.size < 0 ? err("negative") : ok(sum + item.size)),
@@ -648,11 +489,6 @@ const t24Sum: Fallible<readonly T24Item[], number, Sum<{ term: At<number, "negat
 function t24Each<N, B, E>(f: Fallible<N, B, E>): Fallible<readonly N[], readonly B[], Wrapped<"each", Located<number, E>>> {
   return tryMap(f, "each");
 }
-
-// @ts-expect-error a tag is for a fallible function; this one can't fail
-const t24TaggedTotal: Fallible<number, number, never> = step((n: number) => n + 1, "inc");
-// @ts-expect-error without its tag, the fallible function's Result becomes the success value
-const t24MissingTag: Fallible<string, number, Sum<{ parse: ParseErr }>> = tryFlow(step(parseId));
 
 // ── T25: r -- each tag and payload checked against the declared return type, where it's written
 type T25ShapeErr = Sum<{ noFields: Unit }>;

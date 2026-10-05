@@ -1,6 +1,5 @@
 import { variant } from "./variant";
-import { ok, err, isErr, type Result, type Located, type Wrapped } from "./result";
-import { type Fallible } from "./flow";
+import { ok, err, isErr, type Fallible, type Result, type Located, type Wrapped } from "./result";
 
 function failedAt(tag: string, at: unknown, error: unknown): Result<never, unknown> {
   return err(variant(tag, { at, error }));

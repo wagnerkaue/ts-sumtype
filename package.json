@@ -94,16 +94,6 @@
         "default": "./dist/adapt.cjs"
       }
     },
-    "./flow": {
-      "import": {
-        "types": "./dist/flow.d.ts",
-        "default": "./dist/flow.js"
-      },
-      "require": {
-        "types": "./dist/flow.d.cts",
-        "default": "./dist/flow.cjs"
-      }
-    },
     "./match": {
       "import": {
         "types": "./dist/match.d.ts",
@@ -151,7 +141,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/variant.ts src/result.ts src/option.ts src/unwrap.ts src/adapt.ts src/flow.ts src/match.ts src/over.ts src/list.ts src/r.ts --format esm,cjs --dts --target es2022 --out-dir dist --clean && tsup src/prettier.ts --format esm --dts --target es2022 --out-dir dist",
+    "build": "tsup src/index.ts src/variant.ts src/result.ts src/option.ts src/unwrap.ts src/adapt.ts src/match.ts src/over.ts src/list.ts src/r.ts --format esm,cjs --dts --target es2022 --out-dir dist --clean && tsup src/prettier.ts --format esm --dts --target es2022 --out-dir dist",
     "typecheck": "tsc -p tsconfig.json",
     "test:types": "tsc -p tsconfig.typetests.json",
     "test": "vitest run",

@@ -1,5 +1,4 @@
-import { ok, isOk } from "./result";
-import { type Fallible } from "./flow";
+import { ok, isOk, type Fallible } from "./result";
 
 /** `S` with the part at `K` replaced by a `B`: one key of an object, or one index of a tuple. */
 export type Replace<S, K extends keyof S, B> = {

@@ -11,7 +11,6 @@
       "ts-sumtype/unwrap": ["../dist/unwrap.d.ts"],
       "ts-sumtype/adapt": ["../dist/adapt.d.ts"],
       "ts-sumtype/list": ["../dist/list.d.ts"],
-      "ts-sumtype/flow": ["../dist/flow.d.ts"],
       "ts-sumtype/over": ["../dist/over.d.ts"],
       "ts-sumtype/r": ["../dist/r.d.ts"]
     },

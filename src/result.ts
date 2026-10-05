@@ -10,6 +10,9 @@ export type Err<E> = [E] extends [never] ? never : ErrShape<E>;
 /** A value that's either a success or an error; collapses to `Ok<T>` when `E` is `never`. */
 export type Result<T, E> = Ok<T> | Err<E>;
 
+/** A function that may fail, and how: it returns a `Result` carrying either its value or its error. */
+export type Fallible<A, B, E> = (input: A) => Result<B, E>;
+
 /** The two cases spelled out, without the `never`-collapsing: what a `Result<T, E>` is at runtime regardless of `E`. */
 type AnyResult<T, E> = Ok<T> | ErrShape<E>;
 
@@ -63,11 +66,6 @@ export type Located<L, E> = [E] extends [never] ? never : At<L, E>;
  * what lets it return `wrapError(...)` without a cast.
  */
 export type Wrapped<K extends string, E> = [E] extends [never] ? never : Sum<Record<K, E>>;
-
-/** Transforms the error of `result` with `f`, passing a success through unchanged. */
-export function mapError<T, E, F>(result: Result<T, E>, f: (error: E) => F): Result<T, F> {
-  return isOk(result) ? result : err(f(result.error));
-}
 
 /**
  * Wraps the error of `result` as a case tagged `tag`, the error a caller reports for the part

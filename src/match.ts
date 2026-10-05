@@ -1,6 +1,5 @@
 import { type PayloadOf } from "./variant";
-import { wrapError, type Result, type Wrapped } from "./result";
-import { type Fallible } from "./flow";
+import { wrapError, type Fallible, type Result, type Wrapped } from "./result";
 
 /**
  * For each tag of `V`, a handler taking that case's payload and returning an `R`. No handlers

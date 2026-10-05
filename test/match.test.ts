@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { ok, err, errVariant, variant, some, none, step, match, tryMatch, type Option, type Fallible, type Sum, type Unit } from "../src/index";
+import { ok, err, errVariant, variant, some, none, match, tryMatch, type Option, type Fallible, type Sum, type Unit } from "../src/index";
 
 type Value = Sum<{ count: number; label: string }>;
 
 const describeValue: Fallible<Value, string, Sum<{ label: "empty" }>> = tryMatch({
-  count: step((n) => `${n} items`),
+  count: (n) => ok(`${n} items`),
   label: (text) => (text === "" ? err("empty") : ok(`label ${text}`)),
 });
 

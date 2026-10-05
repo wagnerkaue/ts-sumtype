@@ -4,7 +4,6 @@ export * from "./option";
 export * from "./unwrap";
 export * from "./adapt";
 export * from "./list";
-export * from "./flow";
 export * from "./over";
 export * from "./match";
 export * from "./r";
