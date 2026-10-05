@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { ok, err, errVariant, tryReduce, tryMap, tryFlatMap } from "../src/index";
+import { ok, err, tryReduce, tryMap, tryFlatMap } from "../src/index";
 
 type Field = { key: string; size: number };
 const fields: readonly Field[] = [
@@ -13,14 +13,12 @@ describe("tryReduce", () => {
   const add = (sum: number, field: Field) => (field.size === 2 ? err("two") : ok(sum + field.size));
 
   it("folds every item from the initial value", () => {
-    expect(tryReduce((sum: number, field: Field) => ok(sum + field.size), 10, "field")(fields)).toEqual(ok(16));
+    expect(tryReduce(fields, (sum, field) => ok(sum + field.size), 10)).toEqual(ok(16));
   });
 
   it("locates the first failing item at its index, or at at(item)", () => {
-    expect(tryReduce(add, 0, "field")(fields)).toEqual(errVariant("field", { at: 1, error: "two" }));
-    expect(tryReduce(add, 0, "field", (field) => field.key)(fields)).toEqual(
-      errVariant("field", { at: "b", error: "two" }),
-    );
+    expect(tryReduce(fields, add, 0)).toEqual(err({ at: 1, error: "two" }));
+    expect(tryReduce(fields, add, 0, (field) => field.key)).toEqual(err({ at: "b", error: "two" }));
   });
 });
 
@@ -28,39 +26,34 @@ describe("tryMap", () => {
   const sizeOf = (field: Field) => (field.size === 2 ? err("two") : ok(field.size * 10));
 
   it("collects what each item returns", () => {
-    expect(tryMap((field: Field) => ok(field.key), "field")(fields)).toEqual(ok(["a", "b", "c"]));
+    expect(tryMap(fields, (field) => ok(field.key))).toEqual(ok(["a", "b", "c"]));
   });
 
   it("locates the first failing item at its index, or at at(item)", () => {
-    expect(tryMap(sizeOf, "field")(fields)).toEqual(errVariant("field", { at: 1, error: "two" }));
-    expect(tryMap(sizeOf, "field", (field) => field.key)(fields)).toEqual(errVariant("field", { at: "b", error: "two" }));
+    expect(tryMap(fields, sizeOf)).toEqual(err({ at: 1, error: "two" }));
+    expect(tryMap(fields, sizeOf, (field) => field.key)).toEqual(err({ at: "b", error: "two" }));
   });
 
   it("stops at the first failing item", () => {
     const f = vi.fn(sizeOf);
-    tryMap(f, "field")(fields);
+    tryMap(fields, f);
     expect(f).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("tryFlatMap", () => {
   it("concatenates what each item returns", () => {
-    expect(tryFlatMap((field: Field) => ok([field.key]), "field")(fields)).toEqual(ok(["a", "b", "c"]));
+    expect(tryFlatMap(fields, (field) => ok([field.key]))).toEqual(ok(["a", "b", "c"]));
   });
 
-  it("locates the first failing item at its index", () => {
-    expect(tryFlatMap(withoutTwo, "field")(fields)).toEqual(errVariant("field", { at: 1, error: "two" }));
-  });
-
-  it("locates it at at(item) when given", () => {
-    expect(tryFlatMap(withoutTwo, "field", (field) => field.key)(fields)).toEqual(
-      errVariant("field", { at: "b", error: "two" }),
-    );
+  it("locates the first failing item at its index, or at at(item)", () => {
+    expect(tryFlatMap(fields, withoutTwo)).toEqual(err({ at: 1, error: "two" }));
+    expect(tryFlatMap(fields, withoutTwo, (field) => field.key)).toEqual(err({ at: "b", error: "two" }));
   });
 
   it("stops at the first failing item", () => {
     const f = vi.fn(withoutTwo);
-    tryFlatMap(f, "field")(fields);
+    tryFlatMap(fields, f);
     expect(f).toHaveBeenCalledTimes(2);
   });
 });

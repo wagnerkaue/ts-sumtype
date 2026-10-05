@@ -475,29 +475,35 @@ const t22UnknownAsNumber: (s: Sum<{ a: number; b: number }>) => number = match({
   b: (n: number): unknown => t22Unknown(n),
 });
 
-// ── T24: tryMap and tryReduce
+// ── T24: tryMap, tryFlatMap and tryReduce: a failure located at the index or at `at(item)`, for the
+// caller to wrap under its own tag
 type T24Item = { readonly key: string; readonly size: number };
+declare const t24Items: readonly T24Item[];
 const t24Size = (item: T24Item) => (item.size < 0 ? err("negative") : ok(item.size));
 
-const t24ByIndex: Fallible<readonly T24Item[], readonly number[], Sum<{ item: At<number, "negative"> }>> = tryMap(
-  t24Size,
-  "item",
-);
-const t24ByKey: Fallible<readonly T24Item[], readonly number[], Sum<{ item: At<string, "negative"> }>> = tryMap(
-  t24Size,
-  "item",
-  (item) => item.key,
-);
+const t24ByIndex: Result<readonly number[], At<number, "negative">> = tryMap(t24Items, t24Size);
+const t24ByKey: Result<readonly number[], At<string, "negative">> = tryMap(t24Items, t24Size, (item) => item.key);
+// @ts-expect-error without `at`, the failure is located at the index
+const t24MissingAt: Result<readonly number[], At<string, "negative">> = tryMap(t24Items, t24Size);
 
-const t24Sum: Fallible<readonly T24Item[], number, Sum<{ term: At<number, "negative"> }>> = tryReduce(
+// a function that can't fail adds no error case
+const t24Keys: readonly string[] = tryMap(t24Items, (item) => ok(item.key)).ok;
+const t24Flat: readonly string[] = tryFlatMap(t24Items, (item) => ok([item.key])).ok;
+
+const t24Sum: Result<number, At<number, "negative">> = tryReduce(
+  t24Items,
   (sum, item) => (item.size < 0 ? err("negative") : ok(sum + item.size)),
   0,
-  "term",
 );
 
 // generic code names its result with Located
-function t24Each<N, B, E>(f: Fallible<N, B, E>): Fallible<readonly N[], readonly B[], Wrapped<"each", Located<number, E>>> {
-  return tryMap(f, "each");
+function t24Each<N, B, E>(items: readonly N[], f: Fallible<N, B, E>): Result<readonly B[], Located<number, E>> {
+  return tryMap(items, f);
+}
+
+// inside r, the caller wraps the located error under its own tag
+function t24Total(items: readonly T24Item[]): Result<number, Sum<{ item: At<string, "negative"> }>> {
+  return r(($) => $.try(tryMap(items, t24Size, (item) => item.key), "item").reduce((sum, size) => sum + size, 0));
 }
 
 // ── T25: r -- each tag and payload checked against the declared return type, where it's written

@@ -11,11 +11,11 @@ type FieldErr = "empty";
 const columns = (field: Field): Res<string[], FieldErr> =>
   field.size === 0 ? { ok: false, error: "empty" } : { ok: true, value: [field.key] };
 
-export function allColumns(fields: readonly Field[]): Res<string[], { field: { at: string; error: FieldErr } }> {
+export function allColumns(fields: readonly Field[]): Res<string[], { at: string; error: FieldErr }> {
   const collected: string[] = [];
   for (let index = 0; index < fields.length; index++) {
     const result = columns(fields[index]);
-    if (!result.ok) return { ok: false, error: { field: { at: index, error: result.error } } };
+    if (!result.ok) return { ok: false, error: { at: index, error: result.error } };
     collected.push(...result.value);
   }
   return { ok: true, value: collected };
