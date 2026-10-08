@@ -631,6 +631,37 @@
         "overload": false
       }
     },
+    "mapcases-missing-case": {
+      "anomaly": null,
+      "lib": {
+        "count": 1,
+        "codes": [
+          "TS2345"
+        ],
+        "chars": 1044,
+        "lines": 2,
+        "depth": 1,
+        "leaks": [
+          "NoOtherTags"
+        ],
+        "sumExpansions": 0,
+        "truncated": true,
+        "overload": false
+      },
+      "ctl": {
+        "count": 1,
+        "codes": [
+          "TS2366"
+        ],
+        "chars": 84,
+        "lines": 1,
+        "depth": 0,
+        "leaks": [],
+        "sumExpansions": 0,
+        "truncated": false,
+        "overload": false
+      }
+    },
     "result-read-without-narrowing": {
       "anomaly": null,
       "lib": {

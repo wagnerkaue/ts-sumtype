@@ -1,4 +1,4 @@
-import { type PayloadOf } from "./variant";
+import { variant, type PayloadOf, type Sum } from "./variant";
 import { wrapError, type Fallible, type Result, type Wrapped } from "./result";
 
 /**
@@ -17,6 +17,10 @@ type ReturnOf<H> = ReturnOfHandler<H[keyof H]>;
 type ReturnOfHandler<F> = F extends (payload: never) => infer R ? R : never;
 type OkOf<R> = R extends { readonly tag: "ok"; readonly ok: infer T } ? T : never;
 type ErrorOf<R> = R extends { readonly tag: "error"; readonly error: infer E } ? E : never;
+/** `V` with each case's payload replaced by what its handler in `H` returns. */
+type MappedCases<V, H> = V extends { readonly tag: infer K extends string }
+  ? Sum<Record<K, ReturnOfHandler<H[K & keyof H]>>>
+  : never;
 type WrappedErrorOf<H> = {
   [K in keyof H & string]: H[K] extends (payload: never) => infer R ? Wrapped<K, ErrorOf<R>> : never;
 }[keyof H & string];
@@ -45,4 +49,15 @@ export function tryMatch<V extends { tag: string }, const H extends HandlersFor<
   handlers: H & NoInfer<NoOtherTags<V, H>>,
 ): Fallible<V, Settled<H, OkOf<ReturnOf<H>>>, Settled<H, WrappedErrorOf<H>>> {
   return (value) => wrapError(dispatch(handlers, value) as Result<unknown, unknown>, value.tag) as never;
+}
+
+/**
+ * `value` with its payload replaced by what the handler for its case returns, under the same tag.
+ * Every case needs a handler, so a case added to the sum is a compile error until it's handled.
+ */
+export function mapCases<V extends { tag: string }, const H extends HandlersFor<V, unknown>>(
+  value: V,
+  handlers: H & NoInfer<NoOtherTags<V, H>>,
+): Settled<H, MappedCases<V, H>> {
+  return variant(value.tag, dispatch(handlers, value)) as never;
 }

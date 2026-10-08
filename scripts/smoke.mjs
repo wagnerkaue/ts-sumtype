@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { format } from "prettier";
 import * as rPlugin from "../dist/prettier.js";
-import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, patch, match, tryMatch, tryMap, tryReduce, r, infallible } from "../dist/index.js";
+import { ok, errVariant, variant, tagged, unwrap, fromFlat, fromKeyed, fromEnum, isErr, patch, match, tryMatch, mapCases, tryMap, tryReduce, r, infallible } from "../dist/index.js";
 
 function pipeline(x) {
   const doubled = x > 0 ? ok(x * 10) : errVariant("neg", null);
@@ -24,6 +24,7 @@ assert.deepEqual(httpErr("http", { status: 500 }), {
 
 assert.deepEqual(patch({ holder: "ada", card: { number: "4111" } }, { card: { number: Number } }), { holder: "ada", card: { number: 4111 } });
 assert.equal(match({ square: () => 4, triangle: () => 3 })(variant("triangle")), 3);
+assert.deepEqual(mapCases(variant("column", "tag"), { column: (name) => `payment.${name}`, literal: (text) => text }), { tag: "column", column: "payment.tag" });
 const doubled = match({ leaf: (n) => n, wrap: (inner) => doubled(inner) * 2 });
 assert.equal(doubled(variant("wrap", variant("leaf", 3))), 6);
 assert.deepEqual(tryMap([1, -1], (n) => (n < 0 ? { tag: "error", error: "negative" } : { tag: "ok", ok: n * 2 })), { tag: "error", error: { at: 1, error: "negative" } });

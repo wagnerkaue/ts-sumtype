@@ -645,7 +645,7 @@ patch(form, { holder: (holder) => holder.toUpperCase(), card: { expiry: { month:
 // { holder: "ADA", card: { number: "4111 1111 1111 1111", expiry: { month: 12, year: "30" } } }
 ```
 
-Several parts change at once, at any depth, and the original stays as it is. A part may change type, and the result's type follows it: above, `expiry.month` becomes a `number`. A misspelled key is reported where it is written. A part changes through a function, so a fixed value is written `() => value`, and an array is replaced whole. A key the value doesn't have is skipped, so on a sum, `patch(shape, { object: (fields) => fields.length })` changes only the `object` case.
+Several parts change at once, at any depth, and the original stays as it is. A part may change type, and the result's type follows it: above, `expiry.month` becomes a `number`. A misspelled key is reported where it is written. A part changes through a function, so a fixed value is written `() => value`, and an array is replaced whole. A key the value doesn't have is skipped, so on a sum, `patch(shape, { object: (fields) => fields.length })` changes only the `object` case, and the other cases pass through. A change that has to consider every case is [`mapCases`](#mapcases).
 
 A part that can fail goes through `$.try`:
 
@@ -656,6 +656,27 @@ const parseForm = (form: CardForm): Result<CardForm, FormErr> => r(($) => {
   return patch(form, { card: { number: (number) => $.try(cardNumber(number), "number") } });
 });
 ```
+
+### mapCases
+
+`mapCases(value, handlers)` takes a handler for every case of a sum, and returns the value's case with its payload replaced by what that case's handler returns. Masking the personal data in a payment method has to reach every method that carries any:
+
+```typescript
+import { mapCases } from "ts-sumtype";
+
+const masked = (method: PaymentMethod): PaymentMethod =>
+  mapCases(method, {
+    cash: (cash) => cash,
+    paypal: ({ email }) => ({ email: `***@${email.split("@")[1]}` }),
+    creditCard: ({ cardNumber, expiryDate, cvv }) => ({ cardNumber: `**** ${cardNumber.slice(-4)}`, expiryDate, cvv }),
+    crypto: ({ address, currency }) => ({ address: `${address.slice(0, 6)}...`, currency }),
+  });
+
+masked(variant("paypal", { email: "ada@example.com" }));
+// { tag: "paypal", paypal: { email: "***@example.com" } }
+```
+
+A case added to `PaymentMethod` is a compile error here until it has a handler, which is what `patch` can't give: it passes a case it doesn't name through unchanged. A handler that builds its payload without a spread, as these do, is checked field by field against the declared type, so a field added to a case is reported too. A payload may change type, and the result's type follows it.
 
 ### Errors that say where
 
@@ -720,6 +741,7 @@ None of these functions is told where it is. Each builds its result from its chi
 | `tryMatch(handlers)` | a sum → any handler's output | each handler's, under its tag |
 | `infallible(f)` | as `f` | none |
 | `patch(whole, changes)` | a value → the value with those parts replaced | none |
+| `mapCases(value, handlers)` | a sum → the same case, with its handler's output | none |
 
 ---
 

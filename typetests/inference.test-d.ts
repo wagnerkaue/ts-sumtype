@@ -1,9 +1,9 @@
 import {
-  variant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
+  variant, isVariant, tagged, type Sum, type Unit, type Frozen, type NestVariant, type PayloadOf,
   ok, err, errVariant, isOk, isErr, fromThrowable, toOption,
   wrapError, infallible, type Fallible,
   tryReduce, tryMap, tryFlatMap,
-  patch, match, tryMatch, r,
+  patch, match, tryMatch, mapCases, r,
   type Ok, type Err, type Result, type At, type Wrapped, type Located,
   some, none, isSome, isNone, someOr,
   type Some, type None, type Option,
@@ -603,6 +603,59 @@ const t26WrongOutput: Fallible<T26Shape, string, never> = tryMatch({
   scalar: infallible((scalar) => scalar.length),
   object: infallible((fields) => fields.join(",")),
   empty: infallible(() => "empty"),
+});
+
+// ── T27: mapCases -- every case handled, each kept under its tag with a new payload
+type T27Comparison = { readonly left: T27Expr; readonly right: T27Expr };
+type T27Expr = Sum<{ column: string; literal: string; isNull: T27Expr; isDistinctFrom: T27Comparison }>;
+
+function t27Rename(rename: (name: string) => string, expr: T27Expr): T27Expr {
+  const renamed = (inner: T27Expr) => t27Rename(rename, inner);
+  return mapCases(expr, {
+    column: rename,
+    literal: (text) => text,
+    isNull: renamed,
+    isDistinctFrom: ({ left, right }) => ({ left: renamed(left), right: renamed(right) }),
+  });
+}
+
+// a payload changes type, and the result's type follows it
+declare const t27Shape: Sum<{ fields: readonly string[]; empty: Unit }>;
+const t27Counted: Sum<{ fields: number; empty: Unit }> = mapCases(t27Shape, {
+  fields: (fields) => fields.length,
+  empty: (empty) => empty,
+});
+
+// a value narrowed to one case needs one handler
+declare const t27Expr: T27Expr;
+const t27Column: T27Expr = isVariant(t27Expr, "column") ? mapCases(t27Expr, { column: (name) => name }) : t27Expr;
+
+const t27Missing: T27Expr = mapCases(
+  t27Expr,
+  // @ts-expect-error every case needs a handler
+  { column: (name) => name, isNull: (inner) => inner, isDistinctFrom: (comparison) => comparison },
+);
+const t27Extra: T27Expr = mapCases(t27Expr, {
+  column: (name) => name,
+  literal: (text) => text,
+  isNull: (inner) => inner,
+  isDistinctFrom: (comparison) => comparison,
+  // @ts-expect-error a handler for a case the sum doesn't have
+  isNotNull: (inner: T27Expr) => inner,
+});
+const t27WrongPayload: T27Expr = mapCases(t27Expr, {
+  // @ts-expect-error the column's payload is a string
+  column: (name: number) => String(name),
+  literal: (text) => text,
+  isNull: (inner) => inner,
+  isDistinctFrom: (comparison) => comparison,
+});
+// @ts-expect-error a rebuilt payload is checked field by field against the declared type
+const t27MissingField: T27Expr = mapCases(t27Expr, {
+  column: (name) => name,
+  literal: (text) => text,
+  isNull: (inner) => inner,
+  isDistinctFrom: ({ left }) => ({ left }),
 });
 
 // ── T15: direct recursion -- a case whose payload *is* the recursive type, with no object or
